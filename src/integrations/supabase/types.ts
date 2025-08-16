@@ -14,6 +14,108 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_metadata: {
+        Row: {
+          audit_trail_complete: boolean
+          blockchain_hash: string | null
+          created_at: string
+          id: string
+          retention_until: string
+          rfc3161_timestamp: string | null
+          system_version: string
+          verification_id: string
+        }
+        Insert: {
+          audit_trail_complete?: boolean
+          blockchain_hash?: string | null
+          created_at?: string
+          id?: string
+          retention_until?: string
+          rfc3161_timestamp?: string | null
+          system_version?: string
+          verification_id: string
+        }
+        Update: {
+          audit_trail_complete?: boolean
+          blockchain_hash?: string | null
+          created_at?: string
+          id?: string
+          retention_until?: string
+          rfc3161_timestamp?: string | null
+          system_version?: string
+          verification_id?: string
+        }
+        Relationships: []
+      }
+      audit_snapshots: {
+        Row: {
+          created_at: string
+          id: string
+          snapshot_data: Json
+          snapshot_hash: string
+          source_type: string
+          source_url: string
+          storage_path: string | null
+          verification_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          snapshot_data: Json
+          snapshot_hash: string
+          source_type: string
+          source_url: string
+          storage_path?: string | null
+          verification_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          snapshot_data?: Json
+          snapshot_hash?: string
+          source_type?: string
+          source_url?: string
+          storage_path?: string | null
+          verification_id?: string
+        }
+        Relationships: []
+      }
+      compliance_certificates: {
+        Row: {
+          certificate_data: Json
+          certificate_hash: string
+          certificate_type: string
+          created_at: string
+          digital_signature: string | null
+          id: string
+          storage_path: string | null
+          valid_until: string | null
+          verification_id: string
+        }
+        Insert: {
+          certificate_data: Json
+          certificate_hash: string
+          certificate_type?: string
+          created_at?: string
+          digital_signature?: string | null
+          id?: string
+          storage_path?: string | null
+          valid_until?: string | null
+          verification_id: string
+        }
+        Update: {
+          certificate_data?: Json
+          certificate_hash?: string
+          certificate_type?: string
+          created_at?: string
+          digital_signature?: string | null
+          id?: string
+          storage_path?: string | null
+          valid_until?: string | null
+          verification_id?: string
+        }
+        Relationships: []
+      }
       compliance_templates: {
         Row: {
           created_at: string
@@ -184,6 +286,75 @@ export type Database = {
           subscription_plan?: Database["public"]["Enums"]["subscription_plan_enum"]
           updated_at?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      practitioner_credentials: {
+        Row: {
+          ahpra_number: string | null
+          created_at: string
+          id: string
+          practice_name: string | null
+          provider_name: string
+          provider_type: Database["public"]["Enums"]["provider_type_enum"]
+          updated_at: string
+          user_id: string
+          verified_at: string | null
+        }
+        Insert: {
+          ahpra_number?: string | null
+          created_at?: string
+          id?: string
+          practice_name?: string | null
+          provider_name: string
+          provider_type: Database["public"]["Enums"]["provider_type_enum"]
+          updated_at?: string
+          user_id: string
+          verified_at?: string | null
+        }
+        Update: {
+          ahpra_number?: string | null
+          created_at?: string
+          id?: string
+          practice_name?: string | null
+          provider_name?: string
+          provider_type?: Database["public"]["Enums"]["provider_type_enum"]
+          updated_at?: string
+          user_id?: string
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
+      source_validations: {
+        Row: {
+          confidence_score: number
+          conflict_resolution: Json | null
+          created_at: string
+          id: string
+          primary_source: Json
+          secondary_sources: Json
+          validation_status: string
+          verification_id: string
+        }
+        Insert: {
+          confidence_score?: number
+          conflict_resolution?: Json | null
+          created_at?: string
+          id?: string
+          primary_source: Json
+          secondary_sources: Json
+          validation_status?: string
+          verification_id: string
+        }
+        Update: {
+          confidence_score?: number
+          conflict_resolution?: Json | null
+          created_at?: string
+          id?: string
+          primary_source?: Json
+          secondary_sources?: Json
+          validation_status?: string
+          verification_id?: string
         }
         Relationships: []
       }
