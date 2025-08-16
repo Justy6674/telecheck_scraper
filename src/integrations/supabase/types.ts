@@ -14,7 +14,229 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      compliance_templates: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean | null
+          provider_type: Database["public"]["Enums"]["provider_type_enum"]
+          template_content: string
+          template_name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          provider_type: Database["public"]["Enums"]["provider_type_enum"]
+          template_content: string
+          template_name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          provider_type?: Database["public"]["Enums"]["provider_type_enum"]
+          template_content?: string
+          template_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      disaster_declarations: {
+        Row: {
+          affected_areas: Json | null
+          created_at: string
+          declaration_authority: string
+          declaration_date: string
+          declaration_status: Database["public"]["Enums"]["declaration_status_enum"]
+          description: string | null
+          disaster_type: Database["public"]["Enums"]["disaster_type_enum"]
+          expiry_date: string | null
+          id: string
+          last_sync_timestamp: string
+          lga_code: string
+          postcodes: string[] | null
+          severity_level: number | null
+          source_system: string
+          source_url: string | null
+          state_code: string
+          updated_at: string
+        }
+        Insert: {
+          affected_areas?: Json | null
+          created_at?: string
+          declaration_authority: string
+          declaration_date: string
+          declaration_status?: Database["public"]["Enums"]["declaration_status_enum"]
+          description?: string | null
+          disaster_type: Database["public"]["Enums"]["disaster_type_enum"]
+          expiry_date?: string | null
+          id?: string
+          last_sync_timestamp?: string
+          lga_code: string
+          postcodes?: string[] | null
+          severity_level?: number | null
+          source_system: string
+          source_url?: string | null
+          state_code: string
+          updated_at?: string
+        }
+        Update: {
+          affected_areas?: Json | null
+          created_at?: string
+          declaration_authority?: string
+          declaration_date?: string
+          declaration_status?: Database["public"]["Enums"]["declaration_status_enum"]
+          description?: string | null
+          disaster_type?: Database["public"]["Enums"]["disaster_type_enum"]
+          expiry_date?: string | null
+          id?: string
+          last_sync_timestamp?: string
+          lga_code?: string
+          postcodes?: string[] | null
+          severity_level?: number | null
+          source_system?: string
+          source_url?: string | null
+          state_code?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "disaster_declarations_lga_code_fkey"
+            columns: ["lga_code"]
+            isOneToOne: false
+            referencedRelation: "lga_registry"
+            referencedColumns: ["lga_code"]
+          },
+        ]
+      }
+      lga_registry: {
+        Row: {
+          created_at: string | null
+          lga_code: string
+          lga_name: string
+          state_code: string
+          state_name: string
+        }
+        Insert: {
+          created_at?: string | null
+          lga_code: string
+          lga_name: string
+          state_code: string
+          state_name: string
+        }
+        Update: {
+          created_at?: string | null
+          lga_code?: string
+          lga_name?: string
+          state_code?: string
+          state_name?: string
+        }
+        Relationships: []
+      }
+      practice_registration: {
+        Row: {
+          abn: string | null
+          address: string | null
+          contact_phone: string | null
+          created_at: string
+          email: string
+          id: string
+          is_active: boolean | null
+          postcode: string | null
+          practice_name: string
+          provider_types: Database["public"]["Enums"]["provider_type_enum"][]
+          state_code: string | null
+          subscription_plan: Database["public"]["Enums"]["subscription_plan_enum"]
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          abn?: string | null
+          address?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          is_active?: boolean | null
+          postcode?: string | null
+          practice_name: string
+          provider_types?: Database["public"]["Enums"]["provider_type_enum"][]
+          state_code?: string | null
+          subscription_plan?: Database["public"]["Enums"]["subscription_plan_enum"]
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          abn?: string | null
+          address?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          is_active?: boolean | null
+          postcode?: string | null
+          practice_name?: string
+          provider_types?: Database["public"]["Enums"]["provider_type_enum"][]
+          state_code?: string | null
+          subscription_plan?: Database["public"]["Enums"]["subscription_plan_enum"]
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      verification_logs: {
+        Row: {
+          compliance_note: string | null
+          created_at: string
+          declaration_ids: string[] | null
+          disaster_declarations: Json | null
+          exemption_type: string | null
+          id: string
+          patient_postcode: string
+          practice_id: string | null
+          provider_type: Database["public"]["Enums"]["provider_type_enum"]
+          user_id: string | null
+          verification_result: boolean
+        }
+        Insert: {
+          compliance_note?: string | null
+          created_at?: string
+          declaration_ids?: string[] | null
+          disaster_declarations?: Json | null
+          exemption_type?: string | null
+          id?: string
+          patient_postcode: string
+          practice_id?: string | null
+          provider_type: Database["public"]["Enums"]["provider_type_enum"]
+          user_id?: string | null
+          verification_result: boolean
+        }
+        Update: {
+          compliance_note?: string | null
+          created_at?: string
+          declaration_ids?: string[] | null
+          disaster_declarations?: Json | null
+          exemption_type?: string | null
+          id?: string
+          patient_postcode?: string
+          practice_id?: string | null
+          provider_type?: Database["public"]["Enums"]["provider_type_enum"]
+          user_id?: string | null
+          verification_result?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "verification_logs_practice_id_fkey"
+            columns: ["practice_id"]
+            isOneToOne: false
+            referencedRelation: "practice_registration"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +245,25 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      declaration_status_enum: "active" | "expired" | "revoked" | "superseded"
+      disaster_type_enum:
+        | "bushfire"
+        | "flood"
+        | "cyclone"
+        | "earthquake"
+        | "severe_storm"
+        | "drought"
+        | "heatwave"
+        | "landslide"
+        | "tsunami"
+        | "other"
+      provider_type_enum: "GP" | "NP" | "Mixed"
+      subscription_plan_enum:
+        | "starter"
+        | "np_specialist"
+        | "professional"
+        | "enterprise"
+        | "corporate"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +390,28 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      declaration_status_enum: ["active", "expired", "revoked", "superseded"],
+      disaster_type_enum: [
+        "bushfire",
+        "flood",
+        "cyclone",
+        "earthquake",
+        "severe_storm",
+        "drought",
+        "heatwave",
+        "landslide",
+        "tsunami",
+        "other",
+      ],
+      provider_type_enum: ["GP", "NP", "Mixed"],
+      subscription_plan_enum: [
+        "starter",
+        "np_specialist",
+        "professional",
+        "enterprise",
+        "corporate",
+      ],
+    },
   },
 } as const
