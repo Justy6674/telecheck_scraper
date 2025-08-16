@@ -1,1 +1,46 @@
 project_id = "sfbohkqmykagkdmggcxw"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[auth]
+enabled = true
+port = 54324
+external_url = "https://sfbohkqmykagkdmggcxw.supabase.co/auth/v1"
+jwt_expiry = 3600
+refresh_token_rotation_enabled = true
+secure_password_change_enabled = true
+
+[db]
+enabled = true
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[realtime]
+enabled = true
+port = 54323
+
+[studio]
+enabled = true
+port = 54323
+
+[inbucket]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+port = 54321
+file_size_limit = 52428800
+
+[analytics]
+enabled = true
+port = 54327
+
+[functions.enhanced-verification]
+verify_jwt = true

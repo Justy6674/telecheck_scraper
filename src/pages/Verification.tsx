@@ -137,21 +137,60 @@ VERIFICATION RESULT: NO ACTIVE DISASTER DECLARATION
 COMPLIANCE STATUS: STANDARD TELEHEALTH RULES APPLY`;
       }
 
-      // Save verification log
-      const { error: logError } = await supabase
-        .from('verification_logs')
-        .insert({
-          user_id: user.id,
-          patient_postcode: postcode,
-          provider_type: providerType,
-          verification_result: isEligible,
-          compliance_note: complianceNote,
-          exemption_type: exemptionType,
-          disaster_declarations: disasters || [],
-          declaration_ids: disasters?.map(d => d.id) || []
+      // Enhanced verification with full audit trail
+      const enhancedVerificationData = {
+        postcode,
+        providerType,
+        userId: user.id,
+        practitionerDetails: {
+          providerName: "Current User", // Would get from user profile
+          practiceName: "Practice Name" // Would get from practice registration
+        }
+      };
+
+      try {
+        const { data: enhancedResult } = await supabase.functions.invoke('enhanced-verification', {
+          body: enhancedVerificationData
         });
 
-      if (logError) throw logError;
+        if (enhancedResult?.success) {
+          console.log('✓ Enhanced verification completed with audit trail');
+        } else {
+          console.warn('Enhanced verification failed, falling back to basic logging');
+          // Fallback to basic verification logging
+          const { error: logError } = await supabase
+            .from('verification_logs')
+            .insert({
+              user_id: user.id,
+              patient_postcode: postcode,
+              provider_type: providerType,
+              verification_result: isEligible,
+              compliance_note: complianceNote,
+              exemption_type: exemptionType,
+              disaster_declarations: disasters || [],
+              declaration_ids: disasters?.map(d => d.id) || []
+            });
+
+          if (logError) throw logError;
+        }
+      } catch (enhancedError) {
+        console.error('Enhanced verification error:', enhancedError);
+        // Fallback to basic verification logging
+        const { error: logError } = await supabase
+          .from('verification_logs')
+          .insert({
+            user_id: user.id,
+            patient_postcode: postcode,
+            provider_type: providerType,
+            verification_result: isEligible,
+            compliance_note: complianceNote,
+            exemption_type: exemptionType,
+            disaster_declarations: disasters || [],
+            declaration_ids: disasters?.map(d => d.id) || []
+          });
+
+        if (logError) throw logError;
+      }
 
       setResult({
         eligible: isEligible,
