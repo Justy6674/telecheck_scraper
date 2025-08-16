@@ -153,9 +153,9 @@ export default function Dashboard() {
   const getSeverityColor = (level: number) => {
     switch (level) {
       case 5: return "destructive";
-      case 4: return "warning";
-      case 3: return "warning";
-      default: return "secondary";
+      case 4: return "destructive";
+      case 3: return "secondary";
+      default: return "outline";
     }
   };
 

@@ -183,9 +183,9 @@ COMPLIANCE STATUS: STANDARD TELEHEALTH RULES APPLY`;
 
   const getSeverityBadge = (level: number) => {
     if (level >= 5) return <Badge variant="destructive">Critical</Badge>;
-    if (level >= 4) return <Badge variant="warning">Severe</Badge>;
-    if (level >= 3) return <Badge variant="warning">Moderate</Badge>;
-    return <Badge variant="secondary">Minor</Badge>;
+    if (level >= 4) return <Badge variant="destructive">Severe</Badge>;
+    if (level >= 3) return <Badge variant="secondary">Moderate</Badge>;
+    return <Badge variant="outline">Minor</Badge>;
   };
 
   return (
