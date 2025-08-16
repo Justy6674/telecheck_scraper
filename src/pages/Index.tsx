@@ -271,42 +271,6 @@ const Index = () => {
         {/* State Population Impact Tiles */}
         <StatePopulationTiles />
 
-        {/* Current Active Disasters */}
-        {activeDisasters.length > 0 && (
-          <Card className="max-w-4xl mx-auto shadow-medical">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-destructive" />
-                Current Active Disasters
-              </CardTitle>
-              <CardDescription>
-                Live disaster declarations affecting telehealth eligibility across Australia
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-3">
-                {activeDisasters.map((disaster) => (
-                  <div key={disaster.id} className="p-4 rounded-lg border bg-destructive/5">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium capitalize">{disaster.disaster_type}</span>
-                      <Badge variant="destructive">Level {disaster.severity_level}</Badge>
-                    </div>
-                    <div className="space-y-1 text-sm">
-                      <p className="flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        {disaster.lga_name}, {disaster.state_code}
-                      </p>
-                      <p className="flex items-center gap-1 text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        {new Date(disaster.declaration_date).toLocaleDateString('en-AU')}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* CTA Section */}
         <div className="text-center space-y-6 py-8">
