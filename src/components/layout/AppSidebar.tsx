@@ -86,7 +86,7 @@ export function AppSidebar() {
           </div>
           {!collapsed && (
             <div>
-              <h2 className="font-bold text-lg text-primary">DisasterCheck AU</h2>
+              <h2 className="font-bold text-lg text-primary">TeleCheck</h2>
               <p className="text-xs text-muted-foreground">Healthcare Compliance</p>
             </div>
           )}

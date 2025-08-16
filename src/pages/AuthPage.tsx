@@ -43,7 +43,7 @@ export default function AuthPage() {
     } else {
       toast({
         title: "Welcome Back!",
-        description: "Successfully signed in to DisasterCheck AU",
+        description: "Successfully signed in to TeleCheck",
       });
       navigate("/dashboard");
     }
@@ -86,7 +86,7 @@ export default function AuthPage() {
             </div>
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-foreground">DisasterCheck AU</h1>
+            <h1 className="text-3xl font-bold text-foreground">TeleCheck</h1>
             <p className="text-muted-foreground">Australian Telehealth Disaster Verification</p>
           </div>
         </div>

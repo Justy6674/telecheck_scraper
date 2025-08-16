@@ -132,7 +132,7 @@ const Index = () => {
                 <Stethoscope className="h-6 w-6 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-primary">DisasterCheck AU</h1>
+                <h1 className="text-2xl font-bold text-primary">TeleCheck</h1>
                 <p className="text-sm text-muted-foreground">Australian Telehealth Disaster Verification</p>
               </div>
             </div>
@@ -309,7 +309,7 @@ const Index = () => {
           <div className="space-y-3">
             <h3 className="text-2xl font-bold">Ready to Streamline Your Telehealth Compliance?</h3>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Join hundreds of Australian healthcare providers using DisasterCheck AU for instant 
+              Join hundreds of Australian healthcare providers using TeleCheck for instant 
               MBS-compliant disaster verification and automated documentation.
             </p>
           </div>

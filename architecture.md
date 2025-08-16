@@ -1,8 +1,8 @@
-# DisasterCheck AU - Production Architecture
+# TeleCheck - Production Architecture
 
 ## Platform Overview
 
-**DisasterCheck AU** is a production-ready SaaS platform providing real-time verification of Australian natural disaster zones for telehealth MBS exemptions. Healthcare practitioners can instantly verify if patients are located in government-declared disaster areas, removing the standard "established clinical relationship" requirement for telehealth services.
+**TeleCheck** (telecheck.com.au) is a production-ready SaaS platform providing real-time verification of Australian natural disaster zones for telehealth MBS exemptions. Healthcare practitioners can instantly verify if patients are located in government-declared disaster areas, removing the standard "established clinical relationship" requirement for telehealth services.
 
 ### Business Model
 - **Free Tier**: Public postcode searches (100 requests/hour)
