@@ -19,6 +19,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { StatePopulationTiles } from "@/components/StatePopulationTiles";
 
 const Index = () => {
   const { user } = useAuth();
@@ -266,6 +267,9 @@ const Index = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* State Population Impact Tiles */}
+        <StatePopulationTiles />
 
         {/* Current Active Disasters */}
         {activeDisasters.length > 0 && (
