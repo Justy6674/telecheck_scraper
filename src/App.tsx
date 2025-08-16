@@ -14,6 +14,12 @@ import ComplianceNotes from "./pages/ComplianceNotes";
 import PracticeSettings from "./pages/PracticeSettings";
 import DisasterMap from "./pages/DisasterMap";
 import Analytics from "./pages/Analytics";
+import TelehealthRules from "./pages/TelehealthRules";
+import FAQ from "./pages/FAQ";
+import AboutUs from "./pages/AboutUs";
+import HowToUse from "./pages/HowToUse";
+import Subscribe from "./pages/Subscribe";
+import Contact from "./pages/Contact";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +33,12 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/auth" element={<AuthPage />} />
+            <Route path="/telehealth-rules" element={<TelehealthRules />} />
+            <Route path="/faq" element={<FAQ />} />
+            <Route path="/about" element={<AboutUs />} />
+            <Route path="/how-to-use" element={<HowToUse />} />
+            <Route path="/subscribe" element={<Subscribe />} />
+            <Route path="/contact" element={<Contact />} />
             <Route
               path="/*"
               element={

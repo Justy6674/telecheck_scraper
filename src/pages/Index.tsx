@@ -138,11 +138,23 @@ const Index = () => {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <Button variant="ghost" onClick={() => navigate("/telehealth-rules")}>
+                Telehealth Rules
+              </Button>
+              <Button variant="ghost" onClick={() => navigate("/how-to-use")}>
+                How to Use
+              </Button>
+              <Button variant="ghost" onClick={() => navigate("/faq")}>
+                FAQ
+              </Button>
+              <Button variant="ghost" onClick={() => navigate("/about")}>
+                About
+              </Button>
               <Button variant="outline" onClick={() => navigate("/auth")}>
                 Sign In
               </Button>
-              <Button onClick={() => navigate("/auth")} className="bg-gradient-primary">
-                Get Started
+              <Button onClick={() => navigate("/subscribe")} className="bg-gradient-primary">
+                Subscribe
               </Button>
             </div>
           </div>
