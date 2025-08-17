@@ -39,7 +39,7 @@ serve(async (req) => {
 
     // Process and upsert to database
     let insertedCount = 0
-    let updatedCount = 0
+    const updatedCount = 0
     const errors: string[] = []
 
     for (const disaster of allDisasters) {
