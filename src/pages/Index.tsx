@@ -31,15 +31,9 @@ const Index = () => {
   const [activeDisasters, setActiveDisasters] = useState<{ id: string; disaster_type: string; severity_level: number; declaration_date: string; state_code: string; lga_name: string }[]>([]);
 
   useEffect(() => {
-    // Redirect authenticated users to dashboard
-    if (user) {
-      navigate("/dashboard");
-      return;
-    }
-    
-    // Fetch current active disasters for display
+    // Always fetch current active disasters for display
     fetchActiveDisasters();
-  }, [user, navigate]);
+  }, []);
 
   const fetchActiveDisasters = async () => {
     try {
@@ -150,8 +144,8 @@ const Index = () => {
               <Button variant="ghost" onClick={() => navigate("/about")}>
                 About
               </Button>
-              <Button variant="outline" onClick={() => navigate("/auth")}>
-                Sign In
+              <Button variant="outline" onClick={() => navigate(user ? "/dashboard" : "/auth")}>
+                {user ? "Dashboard" : "Sign In"}
               </Button>
               <Button onClick={() => navigate("/subscribe")} className="bg-gradient-primary">
                 Subscribe
