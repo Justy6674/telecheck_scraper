@@ -855,6 +855,48 @@ export type Database = {
           },
         ]
       }
+      nema_lga_profiles: {
+        Row: {
+          attribution: string
+          content_type: string | null
+          created_at: string
+          document_size: number | null
+          extracted_data: Json | null
+          fetched_at: string
+          id: string
+          lga_code: string
+          nema_url: string
+          storage_path: string
+          updated_at: string
+        }
+        Insert: {
+          attribution?: string
+          content_type?: string | null
+          created_at?: string
+          document_size?: number | null
+          extracted_data?: Json | null
+          fetched_at?: string
+          id?: string
+          lga_code: string
+          nema_url: string
+          storage_path: string
+          updated_at?: string
+        }
+        Update: {
+          attribution?: string
+          content_type?: string | null
+          created_at?: string
+          document_size?: number | null
+          extracted_data?: Json | null
+          fetched_at?: string
+          id?: string
+          lga_code?: string
+          nema_url?: string
+          storage_path?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       postcode_import_staging: {
         Row: {
           delivery_office: string | null
