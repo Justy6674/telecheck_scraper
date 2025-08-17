@@ -11,34 +11,48 @@ const supabase = createClient(
 
 async function scrapeAllDisasters() {
   console.log('🚀 Starting FULL DisasterAssist scrape with Puppeteer...');
+  console.log('📊 TARGET: 760+ disasters across 38+ pages');
   
   const browser = await puppeteer.launch({
-    headless: false, // Show browser so you can see it working
-    defaultViewport: null
+    headless: false, // Show browser to see what's happening
+    defaultViewport: null,
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
   
   const page = await browser.newPage();
   
+  // Set user agent to avoid bot detection
+  await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+  
   try {
-    // Navigate to DisasterAssist
-    console.log('📄 Loading DisasterAssist page...');
-    await page.goto('https://www.disasterassist.gov.au/find-a-disaster/australian-disasters', {
-      waitUntil: 'networkidle2',
-      timeout: 60000
-    });
-    
-    // Wait for the table to load
-    await page.waitForSelector('table', { timeout: 30000 });
+    // First page doesn't need table wait
+    console.log('📄 Loading first page of DisasterAssist...');
     
     let allDisasters = [];
     let currentPage = 1;
     let hasMorePages = true;
     
-    while (hasMorePages && currentPage <= 50) { // Max 50 pages for safety
-      console.log(`\n📄 Scraping page ${currentPage}...`);
+    // Scrape ALL 38+ pages by directly navigating to each page URL
+    for (let pageNum = 0; pageNum <= 40; pageNum++) { // Get all 38+ pages
+      const pageUrl = pageNum === 0 
+        ? 'https://www.disasterassist.gov.au/find-a-disaster/australian-disasters'
+        : `https://www.disasterassist.gov.au/find-a-disaster/australian-disasters?page=${pageNum}`;
       
-      // Wait for table to be present
-      await page.waitForSelector('table tbody tr', { timeout: 10000 });
+      console.log(`\n📄 Loading page ${pageNum + 1}/40 - ${pageUrl}`);
+      
+      try {
+        await page.goto(pageUrl, {
+          waitUntil: 'networkidle2',
+          timeout: 30000
+        });
+        
+        // Wait for table to load
+        await page.waitForSelector('table tbody tr', { timeout: 5000 });
+      } catch (e) {
+        console.log(`⚠️ No table found on page ${pageNum + 1}, may have reached end`);
+        if (pageNum > 38) break; // We know there are at least 38 pages
+        continue;
+      }
       
       // Extract disasters from current page
       const pageDisasters = await page.evaluate(() => {
@@ -76,36 +90,17 @@ async function scrapeAllDisasters() {
         return disasters;
       });
       
-      console.log(`✅ Found ${pageDisasters.length} disasters on page ${currentPage}`);
+      console.log(`✅ Found ${pageDisasters.length} disasters on page ${pageNum + 1}`);
+      
+      if (pageDisasters.length === 0) {
+        console.log(`📑 No disasters found on page ${pageNum + 1}, checking if end reached...`);
+        if (pageNum > 38) break; // Stop after checking beyond known pages
+      }
+      
       allDisasters = allDisasters.concat(pageDisasters);
       
-      // Check for next page
-      let nextButton = null;
-      try {
-        nextButton = await page.$('a[rel="next"]') || 
-                     await page.$('.pagination-next:not(.disabled)') ||
-                     await page.$('a[title="Next"]');
-      } catch (e) {
-        // Try simpler selector
-        const links = await page.$$('a');
-        for (const link of links) {
-          const text = await link.evaluate(el => el.textContent);
-          if (text && text.includes('Next')) {
-            nextButton = link;
-            break;
-          }
-        }
-      }
-      
-      if (nextButton) {
-        // Click next page
-        await nextButton.click();
-        await page.waitForTimeout(2000); // Wait for page to load
-        currentPage++;
-      } else {
-        console.log('📑 No more pages found');
-        hasMorePages = false;
-      }
+      // Small delay between page loads to be respectful
+      await page.waitForTimeout(1000);
     }
     
     console.log(`\n🎯 TOTAL DISASTERS FOUND: ${allDisasters.length}`);

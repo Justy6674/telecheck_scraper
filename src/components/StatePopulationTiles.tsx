@@ -162,7 +162,7 @@ export function StatePopulationTiles() {
         description: "Fetching latest disaster data from DisasterAssist...",
       });
 
-      const { data, error } = await supabase.functions.invoke('enhanced-disaster-sync');
+      const { data, error } = await supabase.functions.invoke('railway-scraper-sync');
       
       if (error) {
         throw error;
@@ -170,9 +170,7 @@ export function StatePopulationTiles() {
 
       toast({
         title: "Sync completed",
-        description: data.testMode 
-          ? `Test sync completed - ${data.processed} test records processed`
-          : `Real sync completed - ${data.processed} disasters processed`,
+        description: `Live data refreshed - ${data.processed} disasters from DisasterAssist.gov.au`,
       });
 
       await fetchDisasterData();
