@@ -22,7 +22,7 @@ interface LiveCheckResponse {
   }
   disasters: Array<{
     agrn: string
-    name: string
+    eventName: string
     type: string
     startDate: string
     endDate: string | null
@@ -40,6 +40,8 @@ interface LiveCheckResponse {
   }>
   verificationNotes: string
   copyableText: string
+  disclaimer: string
+  lastSyncTime: string
 }
 
 serve(async (req) => {
@@ -97,8 +99,20 @@ serve(async (req) => {
     
     const { data: disasters } = await supabase
       .from('disaster_declarations')
-      .select('*')
+      .select(`
+        agrn_reference,
+        event_name,
+        disaster_type,
+        declaration_date,
+        expiry_date,
+        declaration_status,
+        declaration_authority,
+        verification_url,
+        data_source,
+        last_sync_timestamp
+      `)
       .eq('lga_code', lga.lga_code)
+      .eq('declaration_status', 'active')
       .lte('declaration_date', checkDate.toISOString())
       .or(`expiry_date.is.null,expiry_date.gte.${checkDate.toISOString()}`)
 
@@ -127,11 +141,11 @@ serve(async (req) => {
     const inDisasterZone = disasters && disasters.length > 0
     const disasterDetails = disasters?.map(d => ({
       agrn: d.agrn_reference || 'Unknown',
-      name: d.description || 'Disaster Declaration',
+      eventName: d.event_name || d.disaster_type || 'Disaster Declaration',
       type: d.disaster_type || 'unknown',
       startDate: d.declaration_date,
       endDate: d.expiry_date,
-      status: d.expiry_date ? 'Closed' : 'Open',
+      status: d.expiry_date ? 'Closed' : 'Open (no end date published)',
       authority: d.declaration_authority || 'Unknown',
       verificationUrl: d.verification_url || 'https://www.disasterassist.gov.au',
       sourceVerified: recheckSources,
@@ -169,7 +183,9 @@ serve(async (req) => {
       disasters: disasterDetails,
       sources: sourceResults,
       verificationNotes,
-      copyableText
+      copyableText,
+      disclaimer: "This verification is based on Disaster Assist data. Healthcare providers must confirm current status by checking the provided source URL before claiming telehealth exemptions.",
+      lastSyncTime: disasters && disasters.length > 0 ? disasters[0].last_sync_timestamp : new Date().toISOString()
     }
 
     return new Response(
@@ -261,11 +277,11 @@ function generateVerificationNotes({
   if (inDisasterZone && disasters.length > 0) {
     notes += `ACTIVE DECLARATIONS:\n`
     disasters.forEach((d: any, i: number) => {
-      notes += `${i + 1}. ${d.name}\n`
+      notes += `${i + 1}. ${d.eventName}\n`
       notes += `   AGRN: ${d.agrn}\n`
       notes += `   Type: ${d.type}\n`
       notes += `   Start: ${new Date(d.startDate).toLocaleDateString('en-AU')}\n`
-      notes += `   End: ${d.endDate ? new Date(d.endDate).toLocaleDateString('en-AU') : 'Open (no end date)'}\n`
+      notes += `   End: ${d.endDate ? new Date(d.endDate).toLocaleDateString('en-AU') : 'Open (no end date published)'}\n`
       notes += `   Source: ${d.verificationUrl}\n\n`
     })
     
@@ -306,9 +322,9 @@ function generateCopyableText({
     text += `Medicare telehealth exemption applies - 12-month relationship requirement waived. `
     
     if (disasters.length > 0) {
-      text += `Active declaration: ${disasters[0].name} (AGRN ${disasters[0].agrn}), `
+      text += `Active declaration: ${disasters[0].eventName} (AGRN ${disasters[0].agrn}), `
       text += `declared ${new Date(disasters[0].startDate).toLocaleDateString('en-AU')}, `
-      text += `${disasters[0].endDate ? 'expires ' + new Date(disasters[0].endDate).toLocaleDateString('en-AU') : 'ongoing'}. `
+      text += `${disasters[0].endDate ? 'expires ' + new Date(disasters[0].endDate).toLocaleDateString('en-AU') : 'Open (no end date published)'}. `
     }
   } else {
     text += `is NOT within an active disaster declaration area. `

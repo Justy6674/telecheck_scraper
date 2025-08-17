@@ -24,6 +24,8 @@ interface DashboardStats {
   recentVerifications: number;
   complianceScore: number;
   totalVerifications: number;
+  lgasCovered: number;
+  lastSyncTime: string;
 }
 
 interface RecentVerification {
@@ -54,6 +56,8 @@ export default function Dashboard() {
     recentVerifications: 0,
     complianceScore: 0,
     totalVerifications: 0,
+    lgasCovered: 0,
+    lastSyncTime: '',
   });
   const [recentVerifications, setRecentVerifications] = useState<RecentVerification[]>([]);
   const [activeDisasters, setActiveDisasters] = useState<ActiveDisaster[]>([]);
@@ -105,6 +109,21 @@ export default function Dashboard() {
         .select('*', { count: 'exact', head: true })
         .eq('declaration_status', 'active');
 
+      // Count unique LGAs covered by active disasters
+      const { data: lgaData } = await supabase
+        .from('disaster_declarations')
+        .select('lga_code')
+        .eq('declaration_status', 'active');
+      
+      const uniqueLgas = new Set(lgaData?.map(d => d.lga_code)).size;
+
+      // Get last sync time from disaster declarations
+      const { data: lastSyncData } = await supabase
+        .from('disaster_declarations')
+        .select('last_sync_timestamp')
+        .order('last_sync_timestamp', { ascending: false })
+        .limit(1);
+
       // Count total verifications for this user
       const { count: totalVerificationCount } = await supabase
         .from('verification_logs')
@@ -130,6 +149,8 @@ export default function Dashboard() {
         recentVerifications: recentVerificationCount,
         complianceScore,
         totalVerifications: totalVerificationCount || 0,
+        lgasCovered: uniqueLgas,
+        lastSyncTime: lastSyncData?.[0]?.last_sync_timestamp || '',
       });
 
       setRecentVerifications(verifications || []);
@@ -236,13 +257,13 @@ export default function Dashboard() {
 
         <Card className="shadow-medical">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Verifications</CardTitle>
-            <FileText className="h-4 w-4 text-accent" />
+            <CardTitle className="text-sm font-medium">LGAs Covered</CardTitle>
+            <MapPin className="h-4 w-4 text-accent" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalVerifications}</div>
+            <div className="text-2xl font-bold">{stats.lgasCovered}</div>
             <p className="text-xs text-muted-foreground">
-              All time
+              Affected areas
             </p>
           </CardContent>
         </Card>

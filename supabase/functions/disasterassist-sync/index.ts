@@ -8,13 +8,14 @@ const corsHeaders = {
 
 interface DisasterEvent {
   agrn: string
-  name: string
+  eventName: string
   startDate: string | null
   endDate: string | null
   status: 'Open' | 'Closed'
   state: string
   lgas: string[]
   sourceUrl: string
+  declarationAuthority: string
 }
 
 serve(async (req) => {
@@ -62,17 +63,18 @@ serve(async (req) => {
         
         const dbRecord = {
           agrn_reference: disaster.agrn,
-          disaster_type: extractDisasterType(disaster.name),
+          event_name: disaster.eventName,
+          disaster_type: extractDisasterType(disaster.eventName),
           declaration_date: disaster.startDate ? new Date(disaster.startDate).toISOString() : new Date().toISOString(),
           expiry_date: disaster.endDate ? new Date(disaster.endDate).toISOString() : null,
           declaration_status: disaster.status === 'Open' ? 'active' : 'expired',
-          declaration_authority: 'Disaster Assist',
+          declaration_authority: disaster.declarationAuthority,
           source_system: 'DisasterAssist',
           source_url: disaster.sourceUrl,
           data_source: 'disasterassist.gov.au',
           state_code: disaster.state.toUpperCase(),
           lga_code: lgaMappings[0]?.lga_code || `${disaster.state.toUpperCase()}001`,
-          description: disaster.name,
+          description: disaster.eventName,
           verification_url: disaster.sourceUrl,
           last_sync_timestamp: new Date().toISOString(),
           affected_areas: {
@@ -243,13 +245,14 @@ async function crawlDisasterDetail(url: string): Promise<DisasterEvent | null> {
 
     return {
       agrn: agrnMatch[1],
-      name: name,
+      eventName: name,
       startDate: startDateMatch ? parseAustralianDate(startDateMatch[1]) : null,
       endDate: endDateMatch ? parseAustralianDate(endDateMatch[1]) : null,
       status: isOpen ? 'Open' : 'Closed',
       state: state,
       lgas: lgas,
-      sourceUrl: url
+      sourceUrl: url,
+      declarationAuthority: 'Commonwealth (DRFA via Disaster Assist)'
     }
   } catch (error) {
     console.error(`Error crawling disaster detail ${url}:`, error)

@@ -399,6 +399,7 @@ export type Database = {
           declaration_status: Database["public"]["Enums"]["declaration_status_enum"]
           description: string | null
           disaster_type: Database["public"]["Enums"]["disaster_type_enum"]
+          event_name: string | null
           expiry_date: string | null
           id: string
           last_sync_timestamp: string
@@ -422,6 +423,7 @@ export type Database = {
           declaration_status?: Database["public"]["Enums"]["declaration_status_enum"]
           description?: string | null
           disaster_type: Database["public"]["Enums"]["disaster_type_enum"]
+          event_name?: string | null
           expiry_date?: string | null
           id?: string
           last_sync_timestamp?: string
@@ -445,6 +447,7 @@ export type Database = {
           declaration_status?: Database["public"]["Enums"]["declaration_status_enum"]
           description?: string | null
           disaster_type?: Database["public"]["Enums"]["disaster_type_enum"]
+          event_name?: string | null
           expiry_date?: string | null
           id?: string
           last_sync_timestamp?: string
@@ -467,6 +470,48 @@ export type Database = {
             referencedColumns: ["lga_code"]
           },
         ]
+      }
+      disaster_orchestration_logs: {
+        Row: {
+          created_at: string | null
+          declarations_added: number | null
+          declarations_expired: number | null
+          declarations_found: number | null
+          details: Json | null
+          errors: string[] | null
+          id: string
+          mode: string
+          run_timestamp: string
+          sources_checked: string[] | null
+          success: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          declarations_added?: number | null
+          declarations_expired?: number | null
+          declarations_found?: number | null
+          details?: Json | null
+          errors?: string[] | null
+          id?: string
+          mode: string
+          run_timestamp?: string
+          sources_checked?: string[] | null
+          success?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          declarations_added?: number | null
+          declarations_expired?: number | null
+          declarations_found?: number | null
+          details?: Json | null
+          errors?: string[] | null
+          id?: string
+          mode?: string
+          run_timestamp?: string
+          sources_checked?: string[] | null
+          success?: boolean | null
+        }
+        Relationships: []
       }
       disaster_types: {
         Row: {
@@ -1363,6 +1408,30 @@ export type Database = {
           name?: string
           population?: number | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      system_config: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          key: string
+          updated_at: string | null
+          value: Json
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          key: string
+          updated_at?: string | null
+          value: Json
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          key?: string
+          updated_at?: string | null
+          value?: Json
         }
         Relationships: []
       }
