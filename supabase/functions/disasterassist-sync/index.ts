@@ -31,23 +31,8 @@ serve(async (req) => {
 
     console.log('Starting enhanced Disaster Assist sync...')
 
-    // Crawl state pages to extract detailed disaster information
-    const states = ['nsw', 'vic', 'qld', 'wa', 'sa', 'tas', 'nt', 'act']
-    const allDisasters: DisasterEvent[] = []
-
-    for (const state of states) {
-      try {
-        console.log(`Crawling ${state.toUpperCase()} disasters...`)
-        const stateDisasters = await crawlStateDisasters(state)
-        allDisasters.push(...stateDisasters)
-        console.log(`Found ${stateDisasters.length} disasters in ${state.toUpperCase()}`)
-        
-        // Small delay to be respectful
-        await new Promise(resolve => setTimeout(resolve, 1000))
-      } catch (error) {
-        console.error(`Error crawling ${state}:`, error)
-      }
-    }
+    // Crawl the main disasters page to get all current disasters
+    const allDisasters = await crawlAllDisasters()
 
     console.log(`Total disasters found: ${allDisasters.length}`)
 
@@ -118,7 +103,7 @@ serve(async (req) => {
         completed_at: new Date().toISOString(),
         metadata: {
           total_disasters_found: allDisasters.length,
-          states_crawled: states,
+          source_url: 'https://www.disasterassist.gov.au/find-a-disaster/australian-disasters',
           errors: errors,
           sync_timestamp: new Date().toISOString()
         }
@@ -155,10 +140,11 @@ serve(async (req) => {
   }
 })
 
-async function crawlStateDisasters(state: string): Promise<DisasterEvent[]> {
-  const stateUrl = `https://www.disasterassist.gov.au/find-a-disaster/australian-disasters/${state}`
+async function crawlAllDisasters(): Promise<DisasterEvent[]> {
+  const mainUrl = 'https://www.disasterassist.gov.au/find-a-disaster/australian-disasters'
   
-  const response = await fetch(stateUrl, {
+  console.log('Fetching main disasters page...')
+  const response = await fetch(mainUrl, {
     headers: {
       'User-Agent': 'DisasterCheck-Australia/1.0 (Healthcare Compliance System)',
       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
@@ -166,24 +152,26 @@ async function crawlStateDisasters(state: string): Promise<DisasterEvent[]> {
   })
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch ${state} page: ${response.status}`)
+    throw new Error(`Failed to fetch disasters page: ${response.status}`)
   }
 
   const html = await response.text()
   
-  // Extract disaster links and basic info from state page
-  const disasterLinks = extractDisasterLinks(html, state)
+  // Extract disaster links from the main table
+  const disasterLinks = extractDisasterLinksFromTable(html)
+  console.log(`Found ${disasterLinks.length} disaster links`)
+  
   const disasters: DisasterEvent[] = []
 
   // Follow each disaster link to get detailed information
-  for (const link of disasterLinks.slice(0, 10)) { // Limit to prevent overwhelming
+  for (const link of disasterLinks) {
     try {
       const disasterDetail = await crawlDisasterDetail(link)
       if (disasterDetail) {
         disasters.push(disasterDetail)
       }
       // Small delay between requests
-      await new Promise(resolve => setTimeout(resolve, 500))
+      await new Promise(resolve => setTimeout(resolve, 300))
     } catch (error) {
       console.error(`Error crawling disaster detail ${link}:`, error)
     }
@@ -192,21 +180,23 @@ async function crawlStateDisasters(state: string): Promise<DisasterEvent[]> {
   return disasters
 }
 
-function extractDisasterLinks(html: string, state: string): string[] {
-  // Extract disaster event URLs from the state page
-  // This is a simplified implementation - would need more robust parsing
-  const linkPattern = new RegExp(`href="([^"]*${state}[^"]*disaster[^"]*)"`, 'gi')
+function extractDisasterLinksFromTable(html: string): string[] {
+  // Extract disaster links from the main table - look for AGRN links
+  const linkPattern = /href="([^"]*\/Pages\/disasters\/[^"]*\.aspx)"/gi
   const matches = html.match(linkPattern) || []
   
-  return matches
+  const links = matches
     .map(match => match.replace(/href="([^"]*)"/, '$1'))
-    .filter(url => url.includes('disaster'))
     .map(url => url.startsWith('http') ? url : `https://www.disasterassist.gov.au${url}`)
-    .slice(0, 20) // Limit results
+    .filter((url, index, array) => array.indexOf(url) === index) // Remove duplicates
+  
+  console.log(`Extracted ${links.length} unique disaster links`)
+  return links
 }
 
 async function crawlDisasterDetail(url: string): Promise<DisasterEvent | null> {
   try {
+    console.log(`Crawling disaster: ${url}`)
     const response = await fetch(url, {
       headers: {
         'User-Agent': 'DisasterCheck-Australia/1.0 (Healthcare Compliance System)',
@@ -215,44 +205,76 @@ async function crawlDisasterDetail(url: string): Promise<DisasterEvent | null> {
     })
 
     if (!response.ok) {
+      console.error(`Failed to fetch disaster page: ${response.status}`)
       return null
     }
 
     const html = await response.text()
     
-    // Extract AGRN
-    const agrnMatch = html.match(/AGRN\s*:?\s*(\d+)/i)
-    if (!agrnMatch) return null
+    // Extract AGRN from URL or content
+    const agrnFromUrl = url.match(/agrn-(\d+)/i)
+    const agrnFromContent = html.match(/AGRN\s*:?\s*(\d+)/i)
+    const agrn = agrnFromUrl?.[1] || agrnFromContent?.[1]
+    
+    if (!agrn) {
+      console.error('No AGRN found for disaster')
+      return null
+    }
 
-    // Extract dates
-    const startDateMatch = html.match(/start.*date.*?(\d{1,2}\/\d{1,2}\/\d{4})/i)
-    const endDateMatch = html.match(/end.*date.*?(\d{1,2}\/\d{1,2}\/\d{4})/i)
+    // Extract dates with better patterns
+    const startDateMatch = html.match(/(?:start\s*date|from)\s*:?\s*(\d{1,2}\/\d{1,2}\/\d{4})/i) ||
+                           html.match(/(\d{1,2}\/\d{1,2}\/\d{4})/) // fallback
+    const endDateMatch = html.match(/(?:end\s*date|until|to)\s*:?\s*(\d{1,2}\/\d{1,2}\/\d{4})/i)
     
-    // Extract status
-    const isOpen = !endDateMatch || html.toLowerCase().includes('ongoing') || html.toLowerCase().includes('current')
+    // Check if disaster is ongoing (no end date means active)
+    const isOngoing = !endDateMatch || html.toLowerCase().includes('ongoing') || 
+                      html.toLowerCase().includes('current') || 
+                      html.toLowerCase().includes('- -') // dash indicates ongoing
     
-    // Extract disaster name/title
+    // Extract disaster name from title or heading
     const titleMatch = html.match(/<title[^>]*>([^<]+)</i)
-    const name = titleMatch ? titleMatch[1].replace(' - Disaster Assist', '').trim() : `Disaster ${agrnMatch[1]}`
+    const h1Match = html.match(/<h1[^>]*>([^<]+)</i)
+    const name = (h1Match?.[1] || titleMatch?.[1] || `Disaster ${agrn}`)
+      .replace(' - Disaster Assist', '')
+      .replace(/\s+/g, ' ')
+      .trim()
     
-    // Extract state from URL or content
-    const stateMatch = url.match(/\/(nsw|vic|qld|wa|sa|tas|nt|act)\//i)
-    const state = stateMatch ? stateMatch[1] : 'unknown'
+    // Extract state from URL path
+    const stateMatch = url.match(/\/disasters\/([^\/]+)\//i)
+    let state = 'unknown'
+    if (stateMatch) {
+      const stateMap: {[key: string]: string} = {
+        'new-south-wales': 'NSW',
+        'victoria': 'VIC', 
+        'queensland': 'QLD',
+        'western-australia': 'WA',
+        'south-australia': 'SA',
+        'tasmania': 'TAS',
+        'northern-territory': 'NT',
+        'australian-capital-territory': 'ACT'
+      }
+      state = stateMap[stateMatch[1]] || stateMatch[1].toUpperCase().substring(0, 3)
+    }
     
-    // Extract LGA information (simplified)
-    const lgaMatches = html.match(/local government area|lga|council/gi)
-    const lgas = lgaMatches ? [`${state.toUpperCase()}001`] : [] // Placeholder
+    // Extract LGA information from content
+    const lgaPattern = /(?:local government area|lga|council|shire|city)s?\s*[:]*\s*([^<\n\r]+)/gi
+    const lgaMatches = html.match(lgaPattern) || []
+    const lgas = lgaMatches.map(match => 
+      match.replace(/(?:local government area|lga|council|shire|city)s?\s*[:]*\s*/gi, '').trim()
+    ).filter(lga => lga.length > 0).slice(0, 5) // limit to 5 LGAs
+
+    console.log(`Parsed disaster: ${name} (AGRN: ${agrn}) - ${state} - Active: ${isOngoing}`)
 
     return {
-      agrn: agrnMatch[1],
+      agrn: agrn,
       eventName: name,
-      startDate: startDateMatch ? parseAustralianDate(startDateMatch[1]) : null,
+      startDate: startDateMatch ? parseAustralianDate(startDateMatch[1]) : new Date().toISOString(),
       endDate: endDateMatch ? parseAustralianDate(endDateMatch[1]) : null,
-      status: isOpen ? 'Open' : 'Closed',
+      status: isOngoing ? 'Open' : 'Closed',
       state: state,
-      lgas: lgas,
+      lgas: lgas.length > 0 ? lgas : [`${state}001`], // fallback LGA code
       sourceUrl: url,
-      declarationAuthority: 'Commonwealth (DRFA via Disaster Assist)'
+      declarationAuthority: 'Australian Government (Disaster Assist)'
     }
   } catch (error) {
     console.error(`Error crawling disaster detail ${url}:`, error)
