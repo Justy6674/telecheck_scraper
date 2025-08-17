@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { DOMParser } from "https://deno.land/x/deno_dom/deno-dom-wasm.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -158,8 +159,19 @@ async function crawlAllDisasters(): Promise<DisasterEvent[]> {
   const html = await response.text()
   
   // Extract disaster links from the main table
-  const disasterLinks = extractDisasterLinksFromTable(html)
+  let disasterLinks = extractDisasterLinksFromTable(html)
   console.log(`Found ${disasterLinks.length} disaster links`)
+  
+  // Fallback: try homepage "Major events" if table extraction failed
+  if (disasterLinks.length === 0) {
+    console.log('No links from table. Falling back to homepage major events...')
+    const homeRes = await fetch('https://www.disasterassist.gov.au', { headers: { 'User-Agent': 'DisasterCheck-Australia/1.0 (Healthcare Compliance System)' } })
+    if (homeRes.ok) {
+      const homeHtml = await homeRes.text()
+      disasterLinks = extractDisasterLinksFromTable(homeHtml)
+      console.log(`Fallback found ${disasterLinks.length} links`)
+    }
+  }
   
   const disasters: DisasterEvent[] = []
 
@@ -181,16 +193,16 @@ async function crawlAllDisasters(): Promise<DisasterEvent[]> {
 }
 
 function extractDisasterLinksFromTable(html: string): string[] {
-  // Extract disaster links from the main table - look for AGRN links
-  const linkPattern = /href="([^"]*\/Pages\/disasters\/[^"]*\.aspx)"/gi
-  const matches = html.match(linkPattern) || []
-  
-  const links = matches
-    .map(match => match.replace(/href="([^"]*)"/, '$1'))
-    .map(url => url.startsWith('http') ? url : `https://www.disasterassist.gov.au${url}`)
-    .filter((url, index, array) => array.indexOf(url) === index) // Remove duplicates
-  
-  console.log(`Extracted ${links.length} unique disaster links`)
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  if (!doc) return []
+  const anchors = Array.from(doc.querySelectorAll('a[href*="/Pages/disasters/"]')) as any[]
+  const links = anchors
+    .map((a: any) => a.getAttribute('href'))
+    .filter(Boolean)
+    .map((url: string) => url.startsWith('http') ? url : `https://www.disasterassist.gov.au${url}`)
+    .filter((url: string, index: number, array: string[]) => array.indexOf(url) === index)
+
+  console.log(`Extracted ${links.length} unique disaster links via DOM`)
   return links
 }
 
