@@ -243,6 +243,45 @@ export type Database = {
           },
         ]
       }
+      data_import_logs: {
+        Row: {
+          completed_at: string | null
+          error_message: string | null
+          id: string
+          import_status: string | null
+          import_type: string
+          metadata: Json | null
+          records_imported: number | null
+          records_updated: number | null
+          source_url: string | null
+          started_at: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          error_message?: string | null
+          id?: string
+          import_status?: string | null
+          import_type: string
+          metadata?: Json | null
+          records_imported?: number | null
+          records_updated?: number | null
+          source_url?: string | null
+          started_at?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          error_message?: string | null
+          id?: string
+          import_status?: string | null
+          import_type?: string
+          metadata?: Json | null
+          records_imported?: number | null
+          records_updated?: number | null
+          source_url?: string | null
+          started_at?: string | null
+        }
+        Relationships: []
+      }
       data_source_health: {
         Row: {
           check_timestamp: string | null
@@ -584,6 +623,33 @@ export type Database = {
           },
         ]
       }
+      lga_import_staging: {
+        Row: {
+          area_sqkm: number | null
+          import_batch_id: string | null
+          lga_code: string
+          lga_name: string
+          population: number | null
+          state_code: string
+        }
+        Insert: {
+          area_sqkm?: number | null
+          import_batch_id?: string | null
+          lga_code: string
+          lga_name: string
+          population?: number | null
+          state_code: string
+        }
+        Update: {
+          area_sqkm?: number | null
+          import_batch_id?: string | null
+          lga_code?: string
+          lga_name?: string
+          population?: number | null
+          state_code?: string
+        }
+        Relationships: []
+      }
       lga_registry: {
         Row: {
           created_at: string | null
@@ -714,6 +780,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      postcode_import_staging: {
+        Row: {
+          delivery_office: string | null
+          import_batch_id: string | null
+          latitude: number | null
+          lga_name: string | null
+          longitude: number | null
+          postcode: string
+          state_code: string | null
+          suburb: string | null
+        }
+        Insert: {
+          delivery_office?: string | null
+          import_batch_id?: string | null
+          latitude?: number | null
+          lga_name?: string | null
+          longitude?: number | null
+          postcode: string
+          state_code?: string | null
+          suburb?: string | null
+        }
+        Update: {
+          delivery_office?: string | null
+          import_batch_id?: string | null
+          latitude?: number | null
+          lga_name?: string | null
+          longitude?: number | null
+          postcode?: string
+          state_code?: string | null
+          suburb?: string | null
+        }
+        Relationships: []
       }
       postcode_verifications: {
         Row: {
