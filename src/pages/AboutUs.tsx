@@ -20,22 +20,10 @@ const AboutUs = () => {
 
   const team = [
     {
-      name: "Dr Sarah Chen",
-      role: "Medical Director & Co-Founder",
-      expertise: "Emergency Medicine, Telehealth Policy",
-      description: "15+ years emergency medicine, led telehealth implementations across rural Australia"
-    },
-    {
-      name: "Michael Roberts",
-      role: "Technology Director & Co-Founder",
-      expertise: "Healthcare Systems, Data Integration",
-      description: "Former CTO at major Australian health tech companies, specialist in medical compliance systems"
-    },
-    {
-      name: "Dr James Mitchell",
-      role: "Clinical Advisor",
-      expertise: "Rural Medicine, MBS Compliance",
-      description: "Rural GP with 20+ years experience, expert in Medicare billing and telehealth regulations"
+      name: "Justin Black",
+      role: "Founder & Developer",
+      expertise: "Nurse Practitioner, Telehealth, SaaS Development",
+      description: "Nurse Practitioner in General Practice, Business owner of Downscale Weight Loss Clinic (Telehealth Company), and SaaS developer at JB SaaS"
     }
   ];
 
