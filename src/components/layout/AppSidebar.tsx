@@ -10,6 +10,7 @@ import {
   Stethoscope,
   Building2,
   LogOut,
+  Database,
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -41,6 +42,7 @@ const mainItems = [
 
 const settingsItems = [
   { title: "Practice Settings", url: "/settings", icon: Building2 },
+  { title: "Data Import", url: "/data-import", icon: Database },
 ];
 
 export function AppSidebar() {

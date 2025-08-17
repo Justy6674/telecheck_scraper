@@ -20,6 +20,7 @@ import AboutUs from "./pages/AboutUs";
 import HowToUse from "./pages/HowToUse";
 import Subscribe from "./pages/Subscribe";
 import Contact from "./pages/Contact";
+import DataImport from "./pages/DataImport";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -54,6 +55,7 @@ const App = () => (
                         <Route path="/settings" element={<PracticeSettings />} />
                         <Route path="/map" element={<DisasterMap />} />
                         <Route path="/analytics" element={<Analytics />} />
+                        <Route path="/data-import" element={<DataImport />} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                     </main>
