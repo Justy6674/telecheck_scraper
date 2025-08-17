@@ -24,9 +24,16 @@ const AUSTRALIAN_STATES = [
   { code: 'ACT', name: 'Australian Capital Territory' }
 ];
 
+const formatPopulation = (num: number): string => {
+  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+  if (num >= 1000) return `${(num / 1000).toFixed(0)}K`;
+  return num.toString();
+};
+
 export function StatePopulationTiles() {
   const [stateData, setStateData] = useState<StateData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lastSync, setLastSync] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [attemptedSync, setAttemptedSync] = useState(false);
 
@@ -103,12 +110,23 @@ export function StatePopulationTiles() {
         }
       });
 
-      setStateData(Object.values(stateStats));
-    } catch (error) {
-      console.error('Error processing disaster data:', error);
-    } finally {
-      setLoading(false);
-    }
+        setStateData(Object.values(stateStats));
+        
+        // Set last sync timestamp
+        const lastSyncTime = new Date().toLocaleString('en-AU', {
+          timeZone: 'Australia/Sydney',
+          year: 'numeric',
+          month: '2-digit', 
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        setLastSync(lastSyncTime);
+      } catch (error) {
+        console.error('Error processing disaster data:', error);
+      } finally {
+        setLoading(false);
+      }
   };
 
   useEffect(() => {
@@ -135,19 +153,6 @@ export function StatePopulationTiles() {
     };
   }, []);
 
-  const runLiveSync = async () => {
-    try {
-      setSyncing(true);
-      await supabase.functions.invoke('disasterassist-sync', {
-        body: { automated: false }
-      });
-      await fetchDisasterData();
-    } catch (e) {
-      console.error('Live sync failed', e);
-    } finally {
-      setSyncing(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -168,6 +173,18 @@ export function StatePopulationTiles() {
       </Card>
     );
   }
+
+  const runLiveSync = async () => {
+    setSyncing(true);
+    try {
+      await supabase.functions.invoke('disasterassist-sync');
+      await fetchDisasterData();
+    } catch (error) {
+      console.error('Error running live sync:', error);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const totalAffectedStates = stateData.filter(state => state.activeDisasters > 0).length;
   const totalActiveDisasters = stateData.reduce((sum, state) => sum + state.activeDisasters, 0);
@@ -199,6 +216,12 @@ export function StatePopulationTiles() {
             <span>{formatPopulation(totalAffectedPopulation)} people affected</span>
             <span>•</span>
             <span>{totalActiveDisasters} total declarations</span>
+            {lastSync && (
+              <>
+                <span>•</span>
+                <span>Last updated: {lastSync}</span>
+              </>
+            )}
           </div>
         </div>
 
@@ -231,7 +254,7 @@ export function StatePopulationTiles() {
               <div className="text-xs text-muted-foreground">
                 {state.activeDisasters > 0 ? (
                   <>
-                    <div className="text-amber-600 font-medium">Data Loading...</div>
+                    <div className="text-destructive font-medium">{formatPopulation(state.affectedPopulation)} affected</div>
                     <div>{state.affectedLGAs.length} LGA{state.affectedLGAs.length !== 1 ? 's' : ''}</div>
                   </>
                 ) : (
@@ -245,8 +268,8 @@ export function StatePopulationTiles() {
         {totalActiveDisasters > 0 && (
           <div className="mt-4 p-3 rounded-lg bg-muted/30 border border-muted">
             <p className="text-xs text-muted-foreground">
-              <strong>Real-time data:</strong> Population calculations based on current disaster declarations 
-              from Australian Government sources. LGA-level declarations updated continuously.
+              <strong>Live data source:</strong> Disaster declarations sourced from DisasterAssist.gov.au - the Australian Government's authoritative disaster registry. 
+              Data includes AGRN references, affected LGAs, and declaration status for Medicare telehealth compliance.
             </p>
           </div>
         )}

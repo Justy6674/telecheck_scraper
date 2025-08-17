@@ -142,102 +142,132 @@ serve(async (req) => {
 })
 
 async function crawlAllDisasters(): Promise<DisasterEvent[]> {
-  console.log('Fetching main disasters page...')
+  console.log('Starting comprehensive DisasterAssist crawl...')
   
-  // Try multiple approaches to find disaster links
   const disasters: DisasterEvent[] = []
+  let currentPage = 1
+  const maxPages = 68 // Known max from user requirements
   
-  // Method 1: Try the main disasters listing page
-  try {
-    const response = await fetch('https://www.disasterassist.gov.au/find-a-disaster/australian-disasters', {
-      headers: { 'User-Agent': 'DisasterCheck-Australia/1.0 (Healthcare Compliance System)' }
-    })
+  while (currentPage <= maxPages) {
+    console.log(`Crawling page ${currentPage} of ${maxPages}...`)
     
-    if (response.ok) {
-      const html = await response.text()
-      let disasterLinks = extractDisasterLinksFromTable(html)
-      console.log(`Method 1 found ${disasterLinks.length} disaster links`)
+    try {
+      // Build the URL for current page
+      const baseUrl = 'https://www.disasterassist.gov.au/find-a-disaster/australian-disasters'
+      const pageUrl = currentPage === 1 ? baseUrl : `${baseUrl}?page=${currentPage}`
       
-      if (disasterLinks.length === 0) {
-        // Try alternative selectors for the current page structure
-        disasterLinks = extractLinksAlternative(html)
-        console.log(`Alternative extraction found ${disasterLinks.length} links`)
+      const response = await fetch(pageUrl, {
+        headers: { 
+          'User-Agent': 'DisasterCheck-Australia/1.0 (Healthcare Compliance System)',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+        }
+      })
+      
+      if (!response.ok) {
+        console.error(`Failed to fetch page ${currentPage}: ${response.status}`)
+        break
       }
       
-      for (const link of disasterLinks.slice(0, 50)) { // Limit to prevent timeouts
+      const html = await response.text()
+      
+      // Extract disaster links from this page
+      const pageLinks = extractDisasterLinksFromPage(html)
+      console.log(`Page ${currentPage} found ${pageLinks.length} disaster links`)
+      
+      if (pageLinks.length === 0) {
+        console.log(`No links found on page ${currentPage}, stopping pagination`)
+        break
+      }
+      
+      // Process each disaster link on this page
+      for (const link of pageLinks) {
         try {
           const disaster = await crawlDisasterDetail(link)
-          if (disaster) disasters.push(disaster)
+          if (disaster) {
+            disasters.push(disaster)
+            console.log(`Processed disaster: ${disaster.eventName} (AGRN: ${disaster.agrn})`)
+          }
         } catch (error) {
           console.error(`Error crawling ${link}:`, error)
         }
       }
-    }
-  } catch (error) {
-    console.error('Method 1 failed:', error)
-  }
-  
-  // Method 2: If still no results, try sitemap approach
-  if (disasters.length === 0) {
-    console.log('Trying sitemap approach...')
-    try {
-      const sitemapResponse = await fetch('https://www.disasterassist.gov.au/sitemap.xml', {
-        headers: { 'User-Agent': 'DisasterCheck-Australia/1.0 (Healthcare Compliance System)' }
-      })
       
-      if (sitemapResponse.ok) {
-        const sitemapXml = await sitemapResponse.text()
-        const sitemapLinks = extractLinksFromSitemap(sitemapXml)
-        console.log(`Sitemap found ${sitemapLinks.length} disaster links`)
-        
-        for (const link of sitemapLinks.slice(0, 20)) {
-          try {
-            const disaster = await crawlDisasterDetail(link)
-            if (disaster) disasters.push(disaster)
-          } catch (error) {
-            console.error(`Error crawling sitemap link ${link}:`, error)
-          }
-        }
-      }
+      currentPage++
+      
+      // Add small delay to be respectful
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
     } catch (error) {
-      console.error('Sitemap method failed:', error)
+      console.error(`Error crawling page ${currentPage}:`, error)
+      break
     }
   }
 
-  console.log(`Total disasters found: ${disasters.length}`)
+  console.log(`Crawl completed: ${disasters.length} disasters found across ${currentPage - 1} pages`)
   return disasters
 }
 
-function extractDisasterLinksFromTable(html: string): string[] {
+function extractDisasterLinksFromPage(html: string): string[] {
   const doc = new DOMParser().parseFromString(html, 'text/html')
   if (!doc) return []
   
-  // Try multiple selectors for disaster links
+  // Updated selectors based on current DisasterAssist structure
   const selectors = [
     'a[href*="/Pages/disasters/"]',
     'a[href*="/disaster/"]', 
     'a[href*="AGRN"]',
-    'table a[href*=".aspx"]',
-    '.disaster-link a',
-    '.table a'
+    'a[href*=".aspx"]',
+    '.views-row a',
+    '.view-content a',
+    '.field-content a',
+    'table a',
+    '.disaster-list a'
   ]
   
   let allLinks: string[] = []
   
   for (const selector of selectors) {
-    const anchors = Array.from(doc.querySelectorAll(selector)) as any[]
-    const links = anchors
-      .map((a: any) => a.getAttribute('href'))
-      .filter(Boolean)
-      .filter((url: string) => url.includes('disaster') || url.includes('AGRN'))
-      .map((url: string) => url.startsWith('http') ? url : `https://www.disasterassist.gov.au${url}`)
-    
-    allLinks = [...allLinks, ...links]
+    try {
+      const anchors = Array.from(doc.querySelectorAll(selector)) as any[]
+      const links = anchors
+        .map((a: any) => a.getAttribute('href'))
+        .filter(Boolean)
+        .filter((url: string) => 
+          url.includes('disaster') || 
+          url.includes('AGRN') || 
+          url.includes('/Pages/disasters/') ||
+          /agrn-\d+/i.test(url)
+        )
+        .map((url: string) => url.startsWith('http') ? url : `https://www.disasterassist.gov.au${url}`)
+      
+      allLinks = [...allLinks, ...links]
+    } catch (error) {
+      console.error(`Error with selector ${selector}:`, error)
+    }
   }
   
-  // Remove duplicates
+  // Regex fallback for disaster links
+  const regexPatterns = [
+    /href="([^"]*\/Pages\/disasters\/[^"]*\.aspx)"/gi,
+    /href="([^"]*disaster[^"]*\.aspx)"/gi,
+    /href="([^"]*agrn-\d+[^"]*)"/gi
+  ]
+  
+  for (const pattern of regexPatterns) {
+    const matches = html.match(pattern) || []
+    const regexLinks = matches
+      .map(match => match.replace(/href="([^"]*)"/, '$1'))
+      .map(url => url.startsWith('http') ? url : `https://www.disasterassist.gov.au${url}`)
+    
+    allLinks = [...allLinks, ...regexLinks]
+  }
+  
+  // Remove duplicates and validate
   const uniqueLinks = [...new Set(allLinks)]
-  console.log(`Extracted ${uniqueLinks.length} unique disaster links via DOM`)
+    .filter(url => url.includes('disasterassist.gov.au'))
+    .filter(url => !url.includes('#'))
+    .filter(url => !url.includes('javascript:'))
+  
   return uniqueLinks
 }
 
@@ -322,9 +352,10 @@ async function crawlDisasterDetail(url: string): Promise<DisasterEvent | null> {
       .replace(/\s+/g, ' ')
       .trim()
     
-    // Extract state from URL path
+    // Extract state from URL path or content
     const stateMatch = url.match(/\/disasters\/([^\/]+)\//i)
     let state = 'unknown'
+    
     if (stateMatch) {
       const stateMap: {[key: string]: string} = {
         'new-south-wales': 'NSW',
@@ -337,6 +368,23 @@ async function crawlDisasterDetail(url: string): Promise<DisasterEvent | null> {
         'australian-capital-territory': 'ACT'
       }
       state = stateMap[stateMatch[1]] || stateMatch[1].toUpperCase().substring(0, 3)
+    } else {
+      // Try to extract state from content
+      const stateContentMatch = html.match(/State[:\s]*(NSW|VIC|QLD|WA|SA|TAS|NT|ACT|New South Wales|Victoria|Queensland|Western Australia|South Australia|Tasmania|Northern Territory|Australian Capital Territory)/i)
+      if (stateContentMatch) {
+        const stateText = stateContentMatch[1].toUpperCase()
+        const stateNameMap: {[key: string]: string} = {
+          'NEW SOUTH WALES': 'NSW',
+          'VICTORIA': 'VIC',
+          'QUEENSLAND': 'QLD',
+          'WESTERN AUSTRALIA': 'WA',
+          'SOUTH AUSTRALIA': 'SA',
+          'TASMANIA': 'TAS',
+          'NORTHERN TERRITORY': 'NT',
+          'AUSTRALIAN CAPITAL TERRITORY': 'ACT'
+        }
+        state = stateNameMap[stateText] || stateText.substring(0, 3)
+      }
     }
     
     // Extract LGA information from content

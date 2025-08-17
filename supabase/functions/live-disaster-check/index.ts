@@ -16,6 +16,7 @@ interface DisasterCheckResult {
   confidence: 'high' | 'medium' | 'low'
   source: 'database' | 'live_scrape' | 'fallback'
   lastUpdated: string
+  practitioner_advisory?: string | null
 }
 
 serve(async (req) => {
@@ -107,6 +108,9 @@ async function checkDatabaseFirst(supabase: any, postcode: string, serviceDate?:
       .eq('declaration_status', 'active')
 
     const isDisasterZone = disasters && disasters.length > 0
+    
+    // Check if any disasters have no expiry date (open disasters)
+    const hasOpenDisasters = disasters?.some(d => !d.expiry_date) || false
 
     return {
       postcode,
@@ -116,7 +120,10 @@ async function checkDatabaseFirst(supabase: any, postcode: string, serviceDate?:
       state: postcodeData.lgas?.states_territories?.code,
       confidence: 'high',
       source: 'database',
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
+      practitioner_advisory: hasOpenDisasters ? 
+        "This disaster has no published end date. Government disaster sites can be unreliable. As the practitioner, you must make your own clinical decision about telehealth eligibility and document appropriately." :
+        null
     }
 
   } catch (error) {
@@ -167,7 +174,10 @@ async function performLiveCheck(supabase: any, postcode: string): Promise<Disast
       state: state || 'Unknown',
       confidence: isDisasterZone ? 'medium' : 'low',
       source: 'live_scrape',
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
+      practitioner_advisory: isDisasterZone ? 
+        "This disaster was detected via live scraping. Government disaster sites can be unreliable. As the practitioner, you must make your own clinical decision about telehealth eligibility and document appropriately." :
+        null
     }
 
   } catch (error) {
@@ -180,7 +190,8 @@ async function performLiveCheck(supabase: any, postcode: string): Promise<Disast
       disasters: [],
       confidence: 'low',
       source: 'fallback',
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
+      practitioner_advisory: null
     }
   }
 }

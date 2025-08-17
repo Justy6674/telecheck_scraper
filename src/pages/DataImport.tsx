@@ -5,12 +5,15 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Download, Database, RefreshCw, AlertTriangle, CheckCircle } from "lucide-react";
+import { RefreshCw, AlertTriangle, CheckCircle, ExternalLink } from "lucide-react";
 
 interface ImportResult {
   success: boolean;
   message: string;
-  records_processed: number;
+  total_found?: number;
+  inserted?: number;
+  updated?: number;
+  errors?: number;
 }
 
 export default function DataImport() {
@@ -18,37 +21,27 @@ export default function DataImport() {
   const [results, setResults] = useState<{[key: string]: ImportResult}>({});
   const { toast } = useToast();
 
-  const handleDataImport = async (importType: 'postcodes' | 'lgas' | 'all' | 'disasters') => {
-    setLoading(importType);
+  const handleDisasterSync = async () => {
+    setLoading('disasterassist');
     
     try {
-      let response;
-      
-      if (importType === 'disasters') {
-        response = await supabase.functions.invoke('live-disaster-loader', {
-          body: { source_type: 'all', force_refresh: true }
-        });
-      } else {
-        response = await supabase.functions.invoke('comprehensive-data-loader', {
-          body: { import_type: importType, force_reload: true }
-        });
-      }
+      const response = await supabase.functions.invoke('disasterassist-sync');
 
       if (response.error) throw response.error;
 
       const result = response.data;
-      setResults(prev => ({ ...prev, [importType]: result }));
+      setResults(prev => ({ ...prev, disasterassist: result }));
 
       toast({
-        title: "Import Successful",
-        description: result.message,
+        title: "DisasterAssist Sync Complete",
+        description: `Found ${result.total_found} disasters, inserted ${result.inserted}, ${result.errors} errors`,
         duration: 5000,
       });
 
     } catch (error) {
-      console.error(`${importType} import error:`, error);
+      console.error('DisasterAssist sync error:', error);
       toast({
-        title: "Import Failed",
+        title: "Sync Failed",
         description: error instanceof Error ? error.message : 'Unknown error occurred',
         variant: "destructive",
         duration: 5000,
@@ -65,7 +58,7 @@ export default function DataImport() {
     return result.success ? (
       <Badge variant="default" className="bg-success text-success-foreground">
         <CheckCircle className="w-3 h-3 mr-1" />
-        Complete ({result.records_processed} records)
+        Complete ({result.total_found} found)
       </Badge>
     ) : (
       <Badge variant="destructive">
@@ -80,173 +73,68 @@ export default function DataImport() {
       <div className="max-w-4xl mx-auto space-y-8">
         <div className="text-center space-y-4">
           <h1 className="text-4xl font-bold text-foreground">
-            Australian Data Import System
+            DisasterAssist Data Sync
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Load comprehensive Australian geographic and disaster data to make TeleCheck functional across all 3,333 postcodes and 537 LGAs.
+            Synchronize live disaster declarations from DisasterAssist.gov.au - the Australian Government's authoritative disaster registry.
           </p>
         </div>
 
         <Alert className="border-warning bg-warning/5">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription className="text-sm">
-            <strong>Critical:</strong> The app currently only has 1 postcode and 1 LGA loaded, making it useless for 99.8% of Australia. 
-            These imports will load all essential data to enable nationwide disaster verification.
+            <strong>Important:</strong> This system crawls all 68+ pages of disaster declarations from DisasterAssist to find active disasters, their LGAs, and affected postcodes.
           </AlertDescription>
         </Alert>
 
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Postcodes Import */}
-          <Card className="border-2">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Database className="w-5 h-5" />
-                Australian Postcodes
-                {getStatusBadge('postcodes')}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="text-sm text-muted-foreground space-y-2">
-                <p><strong>Current:</strong> 1 postcode (4051 Brisbane)</p>
-                <p><strong>Target:</strong> 3,333 Australian postcodes</p>
-                <p><strong>Coverage:</strong> All states and territories</p>
-                <p><strong>Impact:</strong> Enable verification for 25+ million Australians</p>
-              </div>
-              
-              <Button 
-                onClick={() => handleDataImport('postcodes')}
-                disabled={loading === 'postcodes'}
-                className="w-full"
-                size="lg"
-              >
-                {loading === 'postcodes' ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    Importing Postcodes...
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-4 h-4 mr-2" />
-                    Import All Postcodes
-                  </>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* LGAs Import */}
-          <Card className="border-2">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Database className="w-5 h-5" />
-                Local Government Areas
-                {getStatusBadge('lgas')}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="text-sm text-muted-foreground space-y-2">
-                <p><strong>Current:</strong> 1 LGA (Brisbane)</p>
-                <p><strong>Target:</strong> 537 Australian LGAs</p>
-                <p><strong>Coverage:</strong> All councils and shires</p>
-                <p><strong>Impact:</strong> Enable LGA-based disaster mapping</p>
-              </div>
-              
-              <Button 
-                onClick={() => handleDataImport('lgas')}
-                disabled={loading === 'lgas'}
-                className="w-full"
-                size="lg"
-              >
-                {loading === 'lgas' ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    Importing LGAs...
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-4 h-4 mr-2" />
-                    Import All LGAs
-                  </>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Disaster Data */}
-          <Card className="border-2">
+        <div className="grid gap-6">
+          {/* DisasterAssist Sync */}
+          <Card className="border-2 border-primary">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <RefreshCw className="w-5 h-5" />
-                Disaster Declarations
-                {getStatusBadge('disasters')}
+                DisasterAssist Comprehensive Crawl
+                {getStatusBadge('disasterassist')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="text-sm text-muted-foreground space-y-2">
-                <p><strong>Current:</strong> 3 test declarations</p>
-                <p><strong>Target:</strong> Live disaster data from all sources</p>
-                <p><strong>Sources:</strong> Federal + 8 state emergency services</p>
-                <p><strong>Impact:</strong> Real-time verification for 8.5M+ affected Australians</p>
+                <p><strong>Source:</strong> DisasterAssist.gov.au (Australian Government)</p>
+                <p><strong>Coverage:</strong> All 68+ pages of disaster declarations</p>
+                <p><strong>Data:</strong> AGRN, dates, LGAs, postcodes, status</p>
+                <p><strong>Purpose:</strong> Enable Medicare telehealth verification</p>
               </div>
               
               <Button 
-                onClick={() => handleDataImport('disasters')}
-                disabled={loading === 'disasters'}
+                onClick={handleDisasterSync}
+                disabled={loading === 'disasterassist'}
                 className="w-full"
                 size="lg"
-                variant="secondary"
               >
-                {loading === 'disasters' ? (
+                {loading === 'disasterassist' ? (
                   <>
                     <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    Scraping Disasters...
+                    Crawling DisasterAssist...
                   </>
                 ) : (
                   <>
                     <RefreshCw className="w-4 h-4 mr-2" />
-                    Scrape Current Disasters
+                    Sync from DisasterAssist
                   </>
                 )}
               </Button>
-            </CardContent>
-          </Card>
 
-          {/* Import All */}
-          <Card className="border-2 border-primary">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Download className="w-5 h-5" />
-                Complete Data Import
-                {getStatusBadge('all')}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="text-sm text-muted-foreground space-y-2">
-                <p><strong>Action:</strong> Import all essential data</p>
-                <p><strong>Duration:</strong> ~5-10 minutes</p>
-                <p><strong>Result:</strong> Fully functional nationwide verification</p>
-                <p><strong>Recommendation:</strong> Run this first to enable the app</p>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <ExternalLink className="w-3 h-3" />
+                <a 
+                  href="https://www.disasterassist.gov.au/find-a-disaster/australian-disasters" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="hover:underline"
+                >
+                  View source: DisasterAssist.gov.au
+                </a>
               </div>
-              
-              <Button 
-                onClick={() => handleDataImport('all')}
-                disabled={loading === 'all'}
-                className="w-full"
-                size="lg"
-                variant="default"
-              >
-                {loading === 'all' ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    Importing All Data...
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-4 h-4 mr-2" />
-                    Import Everything
-                  </>
-                )}
-              </Button>
             </CardContent>
           </Card>
         </div>
@@ -255,15 +143,25 @@ export default function DataImport() {
         {Object.keys(results).length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Import Results</CardTitle>
+              <CardTitle>Sync Results</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 {Object.entries(results).map(([type, result]) => (
                   <div key={type} className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
                     <div>
-                      <h4 className="font-medium capitalize">{type}</h4>
-                      <p className="text-sm text-muted-foreground">{result.message}</p>
+                      <h4 className="font-medium">DisasterAssist Sync</h4>
+                      <p className="text-sm text-muted-foreground">
+                        {result.success ? 
+                          `Found ${result.total_found} disasters, inserted ${result.inserted}, updated ${result.updated || 0}` :
+                          result.message
+                        }
+                      </p>
+                      {result.errors && result.errors > 0 && (
+                        <p className="text-xs text-destructive">
+                          {result.errors} errors occurred during processing
+                        </p>
+                      )}
                     </div>
                     {result.success ? (
                       <Badge variant="default" className="bg-success text-success-foreground">
@@ -286,8 +184,7 @@ export default function DataImport() {
         <Alert>
           <CheckCircle className="h-4 w-4" />
           <AlertDescription>
-            <strong>Next Steps:</strong> After importing data, test the verification system with various postcodes. 
-            The app will transform from checking 1 postcode to supporting all 3,333 Australian postcodes and real-time disaster status.
+            <strong>Next Steps:</strong> After syncing data, the verification system will check for current disaster declarations and provide practitioner guidance for active disasters without clear end dates.
           </AlertDescription>
         </Alert>
       </div>

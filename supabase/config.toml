@@ -42,20 +42,24 @@ file_size_limit = 52428800
 enabled = true
 port = 54327
 
-[functions.enhanced-verification]
-verify_jwt = true
+# Disabled functions - use disasterassist-sync instead
+# [functions.enhanced-verification]
+# verify_jwt = true
 
-[functions.disaster-scraper]
-verify_jwt = true
+# [functions.disaster-scraper] 
+# verify_jwt = true
 
-[functions.data-import]
-verify_jwt = true
+# [functions.data-import]
+# verify_jwt = true
 
-[functions.live-disaster-loader]
-verify_jwt = true
+# [functions.live-disaster-loader]
+# verify_jwt = true
 
-[functions.real-scraper-loader]
-verify_jwt = true
+# [functions.real-scraper-loader]
+# verify_jwt = true
+
+# [functions.comprehensive-data-loader]
+# verify_jwt = true
 
 [functions.nema-lga-profile-fetch]
 verify_jwt = false
