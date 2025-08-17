@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': 'https://sfbohkqmykagkdmggcxw.supabase.co',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
@@ -14,7 +14,6 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 interface VerificationRequest {
   postcode: string;
   providerType: string;
-  userId: string;
   practitionerDetails?: {
     ahpraNumber?: string;
     providerName: string;
@@ -263,8 +262,32 @@ serve(async (req) => {
   }
 
   try {
+    // SECURITY FIX: Get user ID from JWT token instead of trusting user input
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader) {
+      throw new Error('Authorization header is required');
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      throw new Error('Invalid or expired token');
+    }
+
+    const userId = user.id;
+
+    // Input validation
     const requestData: VerificationRequest = await req.json();
-    const { postcode, providerType, userId, practitionerDetails } = requestData;
+    const { postcode, providerType, practitionerDetails } = requestData;
+
+    if (!postcode || typeof postcode !== 'string' || !/^\d{4}$/.test(postcode)) {
+      throw new Error('Invalid postcode format');
+    }
+
+    if (!providerType || typeof providerType !== 'string') {
+      throw new Error('Provider type is required');
+    }
 
     console.log(`Enhanced verification started for postcode ${postcode}, user ${userId}`);
 
