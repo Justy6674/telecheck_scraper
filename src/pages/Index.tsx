@@ -27,8 +27,8 @@ const Index = () => {
   const { toast } = useToast();
   const [postcode, setPostcode] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
-  const [activeDisasters, setActiveDisasters] = useState<any[]>([]);
+  const [result, setResult] = useState<{ eligible: boolean; postcode: string; declarations: any[]; message: string } | null>(null);
+  const [activeDisasters, setActiveDisasters] = useState<{ id: string; disaster_type: string; severity_level: number; declaration_date: string; state_code: string; lga_name: string }[]>([]);
 
   useEffect(() => {
     // Redirect authenticated users to dashboard
@@ -247,7 +247,7 @@ const Index = () => {
                     </AlertDescription>
                     {result.eligible && result.declarations.length > 0 && (
                       <div className="space-y-2">
-                        {result.declarations.map((disaster: any, index: number) => (
+                        {result.declarations.map((disaster, index) => (
                           <div key={index} className="text-sm p-3 rounded bg-background border">
                             <div className="flex items-center justify-between mb-1">
                               <span className="font-medium capitalize">{disaster.disaster_type}</span>

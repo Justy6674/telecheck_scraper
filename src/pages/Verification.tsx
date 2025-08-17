@@ -23,7 +23,18 @@ import { useNavigate } from "react-router-dom";
 
 interface VerificationResult {
   eligible: boolean;
-  declarations: any[];
+  declarations: Array<{
+    id: string;
+    disaster_type: string;
+    severity_level: number;
+    declaration_date: string;
+    declaration_authority: string;
+    description: string;
+    lga_registry?: {
+      lga_name: string;
+      lga_code: string;
+    };
+  }>;
   exemption_type: string;
   lga_name?: string;
   compliance_note: string;
