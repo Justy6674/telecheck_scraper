@@ -193,7 +193,7 @@ export function StatePopulationTiles() {
               <div className="text-xs text-muted-foreground">
                 {state.activeDisasters > 0 ? (
                   <>
-                    <div>{formatPopulation(state.affectedPopulation)} people affected</div>
+                    <div className="text-amber-600 font-medium">Data Loading...</div>
                     <div>{state.affectedLGAs.length} LGA{state.affectedLGAs.length !== 1 ? 's' : ''}</div>
                   </>
                 ) : (
