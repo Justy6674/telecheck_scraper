@@ -98,8 +98,8 @@ const Index = () => {
         postcode,
         declarations: disasters || [],
         message: isEligible 
-          ? "This postcode may be within an area subject to a current disaster declaration. Please speak with your GP or healthcare provider to confirm whether Medicare telehealth rebates may apply to your situation."
-          : "We couldn't find a current disaster declaration for this postcode. This does not determine your eligibility for Medicare rebates. Please speak with your GP or healthcare provider."
+          ? "This postcode may be within an area subject to a current disaster declaration. Please speak with your Practice, Administration staff, Practitioner or Doctor to confirm whether Medicare telehealth rebates may apply to your situation."
+          : "We couldn't find a current disaster declaration for this postcode. This does not determine your eligibility for Medicare rebates. Please speak with your Practice, Administration staff, Practitioner or Doctor."
       });
 
       toast({
