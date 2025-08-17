@@ -28,6 +28,7 @@ export function StatePopulationTiles() {
   const [stateData, setStateData] = useState<StateData[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [attemptedSync, setAttemptedSync] = useState(false);
 
   const fetchDisasterData = async () => {
     try {
