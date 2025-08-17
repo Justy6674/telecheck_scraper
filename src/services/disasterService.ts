@@ -38,28 +38,29 @@ export async function verifyPostcode(postcode: string): Promise<VerificationResu
     throw new Error('Postcode not found');
   }
   
-  // Step 2: Check for active disasters in this LGA - ONLY REAL DATA
+  // Step 2: Check for active disasters in this LGA - AUTHORITATIVE SOURCES ONLY
   const { data: disasters, error: disasterError } = await supabase
     .from('disaster_declarations')
     .select('*')
     .eq('lga_code', postcodeData.lgas.lga_code)
     .eq('declaration_status', 'active')
-    .neq('source_system', 'DisasterAssist') // Exclude any remaining fake data
+    .in('source_system', ['DisasterAssist', 'State_NSW', 'State_VIC', 'State_QLD', 'State_WA', 'State_SA', 'State_TAS', 'State_NT', 'State_ACT'])
     .not('postcodes', 'is', null) // Only include entries with real postcode data
-    .not('description', 'like', '%Mock%') // Exclude any mock descriptions
-    .not('description', 'like', '%test%'); // Exclude any test descriptions
+    .not('description', 'ilike', '%mock%') // Exclude any mock descriptions
+    .not('description', 'ilike', '%test%'); // Exclude any test descriptions
   
   if (disasterError) {
     throw disasterError;
   }
   
-  // Data provenance check - ensure all disasters have valid sources
+  // Data provenance check - ensure all disasters have valid authoritative sources
   const verifiedDisasters = disasters?.filter(d => 
     d.source_system && 
     d.declaration_authority && 
     d.source_url &&
     d.postcodes &&
-    d.postcodes.length > 0
+    d.postcodes.length > 0 &&
+    (d.agrn_reference || d.source_system.startsWith('State_')) // Must have AGRN or be from state source
   ) || [];
   
   const inDisasterZone = verifiedDisasters.length > 0;
