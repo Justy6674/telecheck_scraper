@@ -1,67 +1,49 @@
+
 project_id = "sfbohkqmykagkdmggcxw"
 
 [api]
 enabled = true
 port = 54321
-schemas = ["public", "storage", "graphql_public"]
+schemas = ["public", "graphql_public"]
 extra_search_path = ["public", "extensions"]
 max_rows = 1000
 
 [auth]
 enabled = true
-port = 54324
-external_url = "https://sfbohkqmykagkdmggcxw.supabase.co/auth/v1"
-jwt_expiry = 3600
-refresh_token_rotation_enabled = true
-secure_password_change_enabled = true
+port = 54322
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["https://localhost:3000"]
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false
 
 [db]
-enabled = true
-port = 54322
-shadow_port = 54320
-major_version = 15
-
-[realtime]
-enabled = true
 port = 54323
 
 [studio]
 enabled = true
-port = 54323
+port = 54324
 
 [inbucket]
 enabled = true
-port = 54324
+port = 54325
 
 [storage]
 enabled = true
-port = 54321
-file_size_limit = 52428800
+port = 54326
 
-[analytics]
+[edge_functions]
 enabled = true
 port = 54327
 
-# Disabled functions - use disasterassist-sync instead
-# [functions.enhanced-verification]
-# verify_jwt = true
+[analytics]
+enabled = false
 
-# [functions.disaster-scraper] 
-# verify_jwt = true
+[functions.crawl-manager]
+verify_jwt = false
 
-# [functions.data-import]
-# verify_jwt = true
-
-# [functions.live-disaster-loader]
-# verify_jwt = true
-
-# [functions.real-scraper-loader]
-# verify_jwt = true
-
-# [functions.comprehensive-data-loader]
-# verify_jwt = true
-
-[functions.nema-lga-profile-fetch]
+[functions.enhanced-disaster-sync]
 verify_jwt = false
 
 [functions.disasterassist-sync]

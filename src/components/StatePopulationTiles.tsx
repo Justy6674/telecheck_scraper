@@ -1,9 +1,11 @@
+
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Users, AlertTriangle, RefreshCw } from "lucide-react";
+import { Users, AlertTriangle, RefreshCw, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface StateData {
   code: string;
@@ -35,38 +37,22 @@ export function StatePopulationTiles() {
   const [loading, setLoading] = useState(true);
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
-  const [attemptedSync, setAttemptedSync] = useState(false);
+  const [syncSource, setSyncSource] = useState<string>('Unknown');
+  const { toast } = useToast();
 
   const fetchDisasterData = async () => {
     try {
       setLoading(true);
+      
       // Fetch active disasters
       const { data: disasters, error } = await supabase
         .from('disaster_declarations')
-        .select('state_code, lga_code, last_sync_timestamp')
+        .select('state_code, lga_code, last_sync_timestamp, data_source')
         .eq('declaration_status', 'active');
 
       if (error) {
         console.error('Error fetching disaster data:', error);
         return;
-      }
-
-      // If empty, attempt a one-off live sync and re-fetch
-      if ((!disasters || disasters.length === 0) && !attemptedSync) {
-        setAttemptedSync(true);
-        try {
-          await supabase.functions.invoke('disasterassist-sync', { body: { automated: false } });
-          const { data: refreshed } = await supabase
-            .from('disaster_declarations')
-            .select('state_code, lga_code')
-            .eq('declaration_status', 'active');
-          if (refreshed) {
-            // replace local reference for downstream processing
-            (disasters as any) = refreshed;
-          }
-        } catch (e) {
-          console.error('Live sync attempt failed', e);
-        }
       }
 
       // Get unique LGA codes to fetch population data
@@ -110,23 +96,38 @@ export function StatePopulationTiles() {
         }
       });
 
-        setStateData(Object.values(stateStats));
+      setStateData(Object.values(stateStats));
+      
+      // Set last sync timestamp and source
+      if (disasters && disasters.length > 0) {
+        const mostRecent = disasters
+          .filter(d => d.last_sync_timestamp)
+          .sort((a, b) => new Date(b.last_sync_timestamp!).getTime() - new Date(a.last_sync_timestamp!).getTime())[0];
         
-        // Set last sync timestamp
-        const lastSyncTime = new Date().toLocaleString('en-AU', {
-          timeZone: 'Australia/Sydney',
-          year: 'numeric',
-          month: '2-digit', 
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit'
-        });
-        setLastSync(lastSyncTime);
-      } catch (error) {
-        console.error('Error processing disaster data:', error);
-      } finally {
-        setLoading(false);
+        if (mostRecent) {
+          const syncTime = new Date(mostRecent.last_sync_timestamp!).toLocaleString('en-AU', {
+            timeZone: 'Australia/Sydney',
+            year: 'numeric',
+            month: '2-digit', 
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+          setLastSync(syncTime);
+          setSyncSource(mostRecent.data_source || 'Unknown');
+        }
       }
+      
+    } catch (error) {
+      console.error('Error processing disaster data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch disaster data",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -153,6 +154,39 @@ export function StatePopulationTiles() {
     };
   }, []);
 
+  const runLiveSync = async () => {
+    setSyncing(true);
+    try {
+      toast({
+        title: "Starting sync",
+        description: "Fetching latest disaster data from DisasterAssist...",
+      });
+
+      const { data, error } = await supabase.functions.invoke('enhanced-disaster-sync');
+      
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Sync completed",
+        description: data.testMode 
+          ? `Test sync completed - ${data.processed} test records processed`
+          : `Real sync completed - ${data.processed} disasters processed`,
+      });
+
+      await fetchDisasterData();
+    } catch (error) {
+      console.error('Error running live sync:', error);
+      toast({
+        title: "Sync failed",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -174,27 +208,9 @@ export function StatePopulationTiles() {
     );
   }
 
-  const runLiveSync = async () => {
-    setSyncing(true);
-    try {
-      await supabase.functions.invoke('disasterassist-sync');
-      await fetchDisasterData();
-    } catch (error) {
-      console.error('Error running live sync:', error);
-    } finally {
-      setSyncing(false);
-    }
-  };
-
   const totalAffectedStates = stateData.filter(state => state.activeDisasters > 0).length;
   const totalActiveDisasters = stateData.reduce((sum, state) => sum + state.activeDisasters, 0);
   const totalAffectedPopulation = stateData.reduce((sum, state) => sum + state.affectedPopulation, 0);
-  
-  const formatPopulation = (pop: number) => {
-    if (pop >= 1000000) return `${(pop / 1000000).toFixed(1)}M`;
-    if (pop >= 1000) return `${(pop / 1000).toFixed(0)}K`;
-    return pop.toString();
-  };
 
   return (
     <Card className="max-w-6xl mx-auto shadow-medical">
@@ -210,19 +226,21 @@ export function StatePopulationTiles() {
               {syncing ? 'Refreshing…' : 'Refresh live data'}
             </Button>
           </div>
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <div className="flex items-center gap-4 text-sm text-muted-foreground mb-2">
             <span>{totalAffectedStates} of 8 states/territories with active declarations</span>
             <span>•</span>
             <span>{formatPopulation(totalAffectedPopulation)} people affected</span>
             <span>•</span>
             <span>{totalActiveDisasters} total declarations</span>
-            {lastSync && (
-              <>
-                <span>•</span>
-                <span>Last updated: {lastSync}</span>
-              </>
-            )}
           </div>
+          {lastSync && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Clock className="h-3 w-3" />
+              <span>Last updated: {lastSync}</span>
+              <span>•</span>
+              <span>Source: {syncSource}</span>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
