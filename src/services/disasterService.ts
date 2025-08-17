@@ -19,7 +19,7 @@ export interface VerificationResult {
   message: string;
 }
 
-export async function verifyPostcode(postcode: string): Promise<VerificationResult> {
+export async function verifyPostcode(postcode: string, asOfDate?: string): Promise<VerificationResult> {
   // Step 1: Find LGA for this postcode
   const { data: postcodeData, error: postcodeError } = await supabase
     .from('postcodes')
@@ -38,16 +38,29 @@ export async function verifyPostcode(postcode: string): Promise<VerificationResu
     throw new Error('Postcode not found');
   }
   
-  // Step 2: Check for active disasters in this LGA - AUTHORITATIVE SOURCES ONLY
-  const { data: disasters, error: disasterError } = await supabase
+  // Step 2: Check for disasters in this LGA - AUTHORITATIVE SOURCES ONLY
+  // Support historical "as-of" date checking
+  let disastersQuery = supabase
     .from('disaster_declarations')
     .select('*')
     .eq('lga_code', postcodeData.lgas.lga_code)
-    .eq('declaration_status', 'active')
     .in('source_system', ['DisasterAssist', 'State_NSW', 'State_VIC', 'State_QLD', 'State_WA', 'State_SA', 'State_TAS', 'State_NT', 'State_ACT'])
     .not('postcodes', 'is', null) // Only include entries with real postcode data
     .not('description', 'ilike', '%mock%') // Exclude any mock descriptions
     .not('description', 'ilike', '%test%'); // Exclude any test descriptions
+
+  if (asOfDate) {
+    // Historical check - find declarations that were active on the specified date
+    const targetDate = new Date(asOfDate);
+    disastersQuery = disastersQuery
+      .lte('declaration_date', targetDate.toISOString())
+      .or(`expiry_date.is.null,expiry_date.gte.${targetDate.toISOString()}`);
+  } else {
+    // Current check - only active declarations
+    disastersQuery = disastersQuery.eq('declaration_status', 'active');
+  }
+
+  const { data: disasters, error: disasterError } = await disastersQuery;
   
   if (disasterError) {
     throw disasterError;

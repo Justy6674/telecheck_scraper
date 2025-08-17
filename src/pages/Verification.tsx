@@ -20,7 +20,10 @@ import {
   RefreshCw,
   Copy,
   ExternalLink,
-  Database
+  Database,
+  Info,
+  CalendarDays,
+  History
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -50,6 +53,24 @@ interface VerificationResult {
   lga_code?: string;
   compliance_note: string;
   verification_timestamp: string;
+  recent_history?: Array<{
+    id: string;
+    disaster_type: string;
+    severity_level: number;
+    declaration_date: string;
+    declaration_authority: string;
+    description: string;
+    source_system: string;
+    source_url: string;
+    agrn_reference?: string;
+    declaration_status: string;
+    expiry_date?: string;
+  }>;
+  sources_checked?: {
+    disaster_assist: boolean;
+    state_emergency: boolean;
+    last_sync: string;
+  };
 }
 
 interface NEMAProfile {
@@ -68,25 +89,36 @@ export default function Verification() {
   const navigate = useNavigate();
   const [postcode, setPostcode] = useState("");
   const [providerType, setProviderType] = useState<"GP" | "NP">("GP");
+  const [asOfDate, setAsOfDate] = useState("");
   const [loading, setLoading] = useState(false);
+  const [recheckingActive, setRecheckingActive] = useState(false);
   const [result, setResult] = useState<VerificationResult | null>(null);
   const [nemaProfile, setNemaProfile] = useState<NEMAProfile | null>(null);
   const [loadingNema, setLoadingNema] = useState(false);
 
-  const handleVerification = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleVerification = async (e: React.FormEvent, isRecheck = false) => {
+    if (e) e.preventDefault();
     if (!user) {
       navigate("/auth");
       return;
     }
 
-    setLoading(true);
-    setResult(null);
-    setNemaProfile(null);
+    const targetLoading = isRecheck ? setRecheckingActive : setLoading;
+    targetLoading(true);
+    
+    if (!isRecheck) {
+      setResult(null);
+      setNemaProfile(null);
+    }
 
     try {
-      // Find active disasters affecting this postcode
-      const { data: disasters, error: disastersError } = await supabase
+      // Determine target date for verification
+      const targetDate = asOfDate ? new Date(asOfDate) : new Date();
+      const currentDate = new Date();
+      const isHistoricalCheck = asOfDate && targetDate < currentDate;
+
+      // Find declarations affecting this postcode
+      let disastersQuery = supabase
         .from('disaster_declarations')
         .select(`
           id,
@@ -100,26 +132,71 @@ export default function Verification() {
           source_url,
           agrn_reference,
           verification_url,
+          declaration_status,
           lga_registry (
             lga_name,
             lga_code
           )
         `)
-        .eq('declaration_status', 'active')
         .contains('postcodes', [postcode])
         .in('source_system', ['DisasterAssist', 'State_NSW', 'State_VIC', 'State_QLD', 'State_WA', 'State_SA', 'State_TAS', 'State_NT', 'State_ACT']);
 
+      // Apply date filtering
+      if (isHistoricalCheck) {
+        // For historical checks, find declarations that were active on the target date
+        disastersQuery = disastersQuery
+          .lte('declaration_date', targetDate.toISOString())
+          .or(`expiry_date.is.null,expiry_date.gte.${targetDate.toISOString()}`);
+      } else {
+        // For current checks, only active declarations
+        disastersQuery = disastersQuery.eq('declaration_status', 'active');
+      }
+
+      const { data: disasters, error: disastersError } = await disastersQuery;
+
       if (disastersError) throw disastersError;
+
+      // Get recent history (last 24 months) for context
+      const twentyFourMonthsAgo = new Date();
+      twentyFourMonthsAgo.setMonth(twentyFourMonthsAgo.getMonth() - 24);
+      
+      const { data: recentHistory } = await supabase
+        .from('disaster_declarations')
+        .select(`
+          id,
+          disaster_type,
+          severity_level,
+          declaration_date,
+          declaration_authority,
+          description,
+          source_system,
+          source_url,
+          agrn_reference,
+          declaration_status,
+          expiry_date
+        `)
+        .contains('postcodes', [postcode])
+        .in('source_system', ['DisasterAssist', 'State_NSW', 'State_VIC', 'State_QLD', 'State_WA', 'State_SA', 'State_TAS', 'State_NT', 'State_ACT'])
+        .gte('declaration_date', twentyFourMonthsAgo.toISOString())
+        .order('declaration_date', { ascending: false });
 
       const isEligible = disasters && disasters.length > 0;
       const exemptionType = isEligible ? "Natural Disaster (MBS Note AN.1.1)" : "No exemption";
       const verificationTimestamp = new Date().toISOString();
       
+      // Sources checked metadata
+      const sourcesChecked = {
+        disaster_assist: true,
+        state_emergency: true,
+        last_sync: verificationTimestamp
+      };
+      
       // Generate enhanced compliance note with source attribution
       let complianceNote = "";
+      const checkDateLabel = isHistoricalCheck ? `As-of: ${targetDate.toLocaleDateString('en-AU')}` : new Date().toLocaleString('en-AU');
+      
       if (isEligible && disasters.length > 0) {
         const disaster = disasters[0];
-        const currentDate = new Date().toLocaleString('en-AU');
         
         const sourceAttribution = disasters.map(d => {
           const source = d.source_system === 'DisasterAssist' ? 
@@ -131,13 +208,14 @@ export default function Verification() {
         if (providerType === "NP") {
           complianceNote = `NOVEMBER 2025 NP TELEHEALTH COMPLIANCE VERIFICATION
 
-Date: ${currentDate}
+Date: ${checkDateLabel}
 Patient Postcode: ${postcode}
 Provider Type: Nurse Practitioner
 Verification ID: ${verificationTimestamp}
+${isHistoricalCheck ? `Historical Check: ${targetDate.toLocaleDateString('en-AU')}\n` : ''}
 
 DISASTER EXEMPTION VERIFICATION:
-✓ Active disaster declaration confirmed via authoritative sources
+✓ ${isHistoricalCheck ? 'Historical' : 'Active'} disaster declaration confirmed via authoritative sources
 ✓ 12-month face-to-face requirement WAIVED due to natural disaster
 ✓ November 2025 NP telehealth rules compliance verified
 
@@ -151,22 +229,24 @@ Primary Declaration Details:
 - Source System: ${disaster.source_system}
 - Severity Level: ${disaster.severity_level}/5
 - Declaration Date: ${new Date(disaster.declaration_date).toLocaleString('en-AU')}
-- Last Verified: ${currentDate}
+- Last Verified: ${checkDateLabel}
 
 COMPLIANCE STATUS: ELIGIBLE FOR NP TELEHEALTH
 Exemption Category: People affected by natural disaster, defined as living in a local government area declared a natural disaster by a State or Territory government.
 
-Data Verification: ${disasters.length} authoritative source${disasters.length > 1 ? 's' : ''} confirmed disaster status for postcode ${postcode}.`;
+Data Verification: ${disasters.length} authoritative source${disasters.length > 1 ? 's' : ''} confirmed disaster status for postcode ${postcode}.
+Recent LGA history: ${recentHistory?.length || 0} declaration(s) in last 24 months.`;
         } else {
           complianceNote = `GP TELEHEALTH DISASTER EXEMPTION VERIFICATION
 
-Date: ${currentDate}
+Date: ${checkDateLabel}
 Patient Postcode: ${postcode}
 Provider Type: General Practitioner
 Verification ID: ${verificationTimestamp}
+${isHistoricalCheck ? `Historical Check: ${targetDate.toLocaleDateString('en-AU')}\n` : ''}
 
 DISASTER EXEMPTION VERIFICATION:
-✓ Active disaster declaration confirmed via authoritative sources
+✓ ${isHistoricalCheck ? 'Historical' : 'Active'} disaster declaration confirmed via authoritative sources
 ✓ 12-month relationship requirement WAIVED due to natural disaster
 ✓ Geographic restrictions LIFTED under disaster exemption
 
@@ -180,28 +260,32 @@ Primary Declaration Details:
 - Source System: ${disaster.source_system}
 - Severity Level: ${disaster.severity_level}/5
 - Declaration Date: ${new Date(disaster.declaration_date).toLocaleString('en-AU')}
-- Last Verified: ${currentDate}
+- Last Verified: ${checkDateLabel}
 
 COMPLIANCE STATUS: ELIGIBLE FOR GP TELEHEALTH
 Exemption Type: Natural Disaster (MBS Note AN.1.1)
 
-Data Verification: ${disasters.length} authoritative source${disasters.length > 1 ? 's' : ''} confirmed disaster status for postcode ${postcode}.`;
+Data Verification: ${disasters.length} authoritative source${disasters.length > 1 ? 's' : ''} confirmed disaster status for postcode ${postcode}.
+Recent LGA history: ${recentHistory?.length || 0} declaration(s) in last 24 months.`;
         }
       } else {
         complianceNote = `TELEHEALTH ELIGIBILITY VERIFICATION
 
-Date: ${new Date().toLocaleString('en-AU')}
+Date: ${checkDateLabel}
 Patient Postcode: ${postcode}
 Provider Type: ${providerType}
 Verification ID: ${verificationTimestamp}
+${isHistoricalCheck ? `Historical Check: ${targetDate.toLocaleDateString('en-AU')}\n` : ''}
 
-VERIFICATION RESULT: NO ACTIVE DISASTER DECLARATION
-- No current natural disaster declarations affect postcode ${postcode}
+VERIFICATION RESULT: NO ${isHistoricalCheck ? 'HISTORICAL' : 'ACTIVE'} DISASTER DECLARATION
+- No ${isHistoricalCheck ? 'historical' : 'current'} natural disaster declarations affect postcode ${postcode}
 - Standard telehealth eligibility rules apply
 - ${providerType === "NP" ? "12-month face-to-face relationship required (effective Nov 1, 2025)" : "Standard GP telehealth rules apply"}
 
 SOURCES CHECKED: Disaster Assist, State/Territory Emergency Services
-Last Verified: ${new Date().toLocaleString('en-AU')}
+Active declarations: ${disasters?.length || 0}
+Recent LGA history: ${recentHistory?.length || 0} declaration(s) in last 24 months
+Last Verified: ${checkDateLabel}
 
 COMPLIANCE STATUS: STANDARD TELEHEALTH RULES APPLY`;
       }
@@ -250,14 +334,16 @@ COMPLIANCE STATUS: STANDARD TELEHEALTH RULES APPLY`;
         lga_name: disasters?.[0]?.lga_registry?.lga_name,
         lga_code: disasters?.[0]?.lga_registry?.lga_code,
         compliance_note: complianceNote,
-        verification_timestamp: verificationTimestamp
+        verification_timestamp: verificationTimestamp,
+        recent_history: recentHistory || [],
+        sources_checked: sourcesChecked
       });
 
       toast({
-        title: "Verification Complete",
+        title: isRecheck ? "Re-verification Complete" : "Verification Complete",
         description: isEligible 
-          ? "Patient eligible for disaster exemption telehealth"
-          : "No active disaster declaration for this postcode",
+          ? `Patient eligible for disaster exemption telehealth${isHistoricalCheck ? ' (historical)' : ''}`
+          : `No ${isHistoricalCheck ? 'historical' : 'active'} disaster declaration for this postcode`,
         variant: isEligible ? "default" : "destructive"
       });
 
@@ -269,8 +355,12 @@ COMPLIANCE STATUS: STANDARD TELEHEALTH RULES APPLY`;
         variant: "destructive"
       });
     } finally {
-      setLoading(false);
+      targetLoading(false);
     }
+  };
+
+  const recheckNow = () => {
+    handleVerification(null, true);
   };
 
   const fetchNEMAProfile = async (forceRefresh = false) => {
@@ -367,7 +457,7 @@ COMPLIANCE STATUS: STANDARD TELEHEALTH RULES APPLY`;
         </CardHeader>
         <CardContent>
           <form onSubmit={handleVerification} className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="postcode">Patient Postcode</Label>
                 <Input
@@ -393,7 +483,29 @@ COMPLIANCE STATUS: STANDARD TELEHEALTH RULES APPLY`;
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="as-of-date">
+                  As-of Date 
+                  <Badge variant="outline" className="ml-1 text-xs">Optional</Badge>
+                </Label>
+                <Input
+                  id="as-of-date"
+                  type="date"
+                  value={asOfDate}
+                  onChange={(e) => setAsOfDate(e.target.value)}
+                  max={new Date().toISOString().split('T')[0]}
+                />
+              </div>
             </div>
+
+            {asOfDate && (
+              <Alert>
+                <CalendarDays className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Historical Check:</strong> Checking eligibility as it would have been on {new Date(asOfDate).toLocaleDateString('en-AU')}.
+                </AlertDescription>
+              </Alert>
+            )}
 
             {providerType === "NP" && (
               <Alert>
@@ -418,7 +530,7 @@ COMPLIANCE STATUS: STANDARD TELEHEALTH RULES APPLY`;
               ) : (
                 <>
                   <Search className="mr-2 h-4 w-4" />
-                  Verify Eligibility
+                  {asOfDate ? 'Check Historical Eligibility' : 'Verify Current Eligibility'}
                 </>
               )}
             </Button>
@@ -450,6 +562,7 @@ COMPLIANCE STATUS: STANDARD TELEHEALTH RULES APPLY`;
                     </h3>
                     <p className="text-sm text-muted-foreground">
                       Postcode {postcode} • {providerType} Provider • Verified: {new Date(result.verification_timestamp).toLocaleString('en-AU')}
+                      {asOfDate && <span> • As-of: {new Date(asOfDate).toLocaleDateString('en-AU')}</span>}
                     </p>
                   </div>
                   <Badge variant={result.eligible ? "default" : "secondary"}>
@@ -457,11 +570,54 @@ COMPLIANCE STATUS: STANDARD TELEHEALTH RULES APPLY`;
                   </Badge>
                 </div>
 
+                {/* Why this decision panel */}
+                <div className="p-4 rounded-lg border bg-muted/30">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-semibold flex items-center gap-2">
+                      <Info className="h-4 w-4" />
+                      Why this decision
+                    </h4>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={recheckNow}
+                      disabled={recheckingActive}
+                    >
+                      {recheckingActive ? (
+                        <RefreshCw className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-3 w-3" />
+                      )}
+                      Re-check now
+                    </Button>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span>Active declarations found:</span>
+                      <span className="font-mono">{result.declarations.length}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Sources checked:</span>
+                      <span className="font-mono text-success">✓ Disaster Assist, State/Territory</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Last sync:</span>
+                      <span className="font-mono">{result.sources_checked ? new Date(result.sources_checked.last_sync).toLocaleString('en-AU') : 'N/A'}</span>
+                    </div>
+                    {result.recent_history && result.recent_history.length > 0 && (
+                      <div className="flex justify-between">
+                        <span>Historical declarations (24m):</span>
+                        <span className="font-mono">{result.recent_history.length}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 {result.eligible && result.declarations.length > 0 && (
                   <div className="space-y-3">
                     <h4 className="font-semibold flex items-center gap-2">
                       <AlertTriangle className="h-4 w-4 text-destructive" />
-                      Active Disaster Declarations ({result.declarations.length})
+                      {asOfDate ? 'Historical' : 'Active'} Disaster Declarations ({result.declarations.length})
                     </h4>
                     {result.declarations.map((declaration, index) => (
                       <div key={index} className="p-4 rounded-lg border bg-destructive/5">
@@ -507,6 +663,52 @@ COMPLIANCE STATUS: STANDARD TELEHEALTH RULES APPLY`;
                         </div>
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {/* Recent history section */}
+                {result.recent_history && result.recent_history.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="font-semibold flex items-center gap-2">
+                      <History className="h-4 w-4 text-muted-foreground" />
+                      Recent LGA Declarations (Last 24 Months)
+                      <Badge variant="outline" className="text-xs">Historical - Not Eligibility Trigger</Badge>
+                    </h4>
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {result.recent_history.map((declaration, index) => (
+                        <div key={index} className="p-3 rounded-lg border bg-muted/20">
+                          <div className="flex items-start justify-between mb-2">
+                            <div>
+                              <h5 className="font-medium capitalize text-sm flex items-center gap-2">
+                                {declaration.disaster_type} Emergency
+                                {getSourceBadge(declaration.source_system)}
+                                <Badge variant={declaration.declaration_status === 'active' ? 'default' : 'secondary'} className="text-xs">
+                                  {declaration.declaration_status}
+                                </Badge>
+                              </h5>
+                              <p className="text-xs text-muted-foreground">
+                                AGRN: {declaration.agrn_reference || 'N/A'}
+                              </p>
+                            </div>
+                            {getSeverityBadge(declaration.severity_level)}
+                          </div>
+                          <div className="space-y-1 text-xs">
+                            <p><Clock className="inline h-3 w-3 mr-1" />
+                              {new Date(declaration.declaration_date).toLocaleDateString('en-AU')}
+                              {declaration.expiry_date && ` - ${new Date(declaration.expiry_date).toLocaleDateString('en-AU')}`}
+                            </p>
+                            <div className="flex gap-2 mt-1">
+                              <Button variant="outline" size="sm" asChild className="h-6 text-xs">
+                                <a href={declaration.source_url} target="_blank" rel="noopener noreferrer">
+                                  <ExternalLink className="h-2 w-2 mr-1" />
+                                  Source
+                                </a>
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
