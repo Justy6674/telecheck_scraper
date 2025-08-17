@@ -36,12 +36,30 @@ export function StatePopulationTiles() {
       // Fetch active disasters
       const { data: disasters, error } = await supabase
         .from('disaster_declarations')
-        .select('state_code, lga_code')
+        .select('state_code, lga_code, last_sync_timestamp')
         .eq('declaration_status', 'active');
 
       if (error) {
         console.error('Error fetching disaster data:', error);
         return;
+      }
+
+      // If empty, attempt a one-off live sync and re-fetch
+      if ((!disasters || disasters.length === 0) && !attemptedSync) {
+        setAttemptedSync(true);
+        try {
+          await supabase.functions.invoke('disasterassist-sync', { body: { automated: false } });
+          const { data: refreshed } = await supabase
+            .from('disaster_declarations')
+            .select('state_code, lga_code')
+            .eq('declaration_status', 'active');
+          if (refreshed) {
+            // replace local reference for downstream processing
+            (disasters as any) = refreshed;
+          }
+        } catch (e) {
+          console.error('Live sync attempt failed', e);
+        }
       }
 
       // Get unique LGA codes to fetch population data
