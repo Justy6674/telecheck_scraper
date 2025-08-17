@@ -44,3 +44,15 @@ port = 54327
 
 [functions.enhanced-verification]
 verify_jwt = true
+
+[functions.disaster-scraper]
+verify_jwt = true
+
+[functions.data-import]
+verify_jwt = true
+
+[functions.live-disaster-loader]
+verify_jwt = true
+
+[functions.real-scraper-loader]
+verify_jwt = true

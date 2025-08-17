@@ -391,7 +391,9 @@ export type Database = {
       disaster_declarations: {
         Row: {
           affected_areas: Json | null
+          agrn_reference: string | null
           created_at: string
+          data_source: string | null
           declaration_authority: string
           declaration_date: string
           declaration_status: Database["public"]["Enums"]["declaration_status_enum"]
@@ -400,6 +402,7 @@ export type Database = {
           expiry_date: string | null
           id: string
           last_sync_timestamp: string
+          last_verified: string | null
           lga_code: string
           postcodes: string[] | null
           severity_level: number | null
@@ -407,10 +410,13 @@ export type Database = {
           source_url: string | null
           state_code: string
           updated_at: string
+          verification_url: string | null
         }
         Insert: {
           affected_areas?: Json | null
+          agrn_reference?: string | null
           created_at?: string
+          data_source?: string | null
           declaration_authority: string
           declaration_date: string
           declaration_status?: Database["public"]["Enums"]["declaration_status_enum"]
@@ -419,6 +425,7 @@ export type Database = {
           expiry_date?: string | null
           id?: string
           last_sync_timestamp?: string
+          last_verified?: string | null
           lga_code: string
           postcodes?: string[] | null
           severity_level?: number | null
@@ -426,10 +433,13 @@ export type Database = {
           source_url?: string | null
           state_code: string
           updated_at?: string
+          verification_url?: string | null
         }
         Update: {
           affected_areas?: Json | null
+          agrn_reference?: string | null
           created_at?: string
+          data_source?: string | null
           declaration_authority?: string
           declaration_date?: string
           declaration_status?: Database["public"]["Enums"]["declaration_status_enum"]
@@ -438,6 +448,7 @@ export type Database = {
           expiry_date?: string | null
           id?: string
           last_sync_timestamp?: string
+          last_verified?: string | null
           lga_code?: string
           postcodes?: string[] | null
           severity_level?: number | null
@@ -445,6 +456,7 @@ export type Database = {
           source_url?: string | null
           state_code?: string
           updated_at?: string
+          verification_url?: string | null
         }
         Relationships: [
           {
@@ -482,6 +494,68 @@ export type Database = {
           severity_scale?: number | null
         }
         Relationships: []
+      }
+      disaster_validations: {
+        Row: {
+          created_at: string | null
+          disaster_id: string | null
+          id: string
+          last_checked: string | null
+          source_1: string | null
+          source_1_url: string | null
+          source_1_verified: boolean | null
+          source_2: string | null
+          source_2_url: string | null
+          source_2_verified: boolean | null
+          source_3: string | null
+          source_3_url: string | null
+          source_3_verified: boolean | null
+          validation_score: number | null
+          validation_status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          disaster_id?: string | null
+          id?: string
+          last_checked?: string | null
+          source_1?: string | null
+          source_1_url?: string | null
+          source_1_verified?: boolean | null
+          source_2?: string | null
+          source_2_url?: string | null
+          source_2_verified?: boolean | null
+          source_3?: string | null
+          source_3_url?: string | null
+          source_3_verified?: boolean | null
+          validation_score?: number | null
+          validation_status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          disaster_id?: string | null
+          id?: string
+          last_checked?: string | null
+          source_1?: string | null
+          source_1_url?: string | null
+          source_1_verified?: boolean | null
+          source_2?: string | null
+          source_2_url?: string | null
+          source_2_verified?: boolean | null
+          source_3?: string | null
+          source_3_url?: string | null
+          source_3_verified?: boolean | null
+          validation_score?: number | null
+          validation_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "disaster_validations_disaster_id_fkey"
+            columns: ["disaster_id"]
+            isOneToOne: false
+            referencedRelation: "disaster_declarations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       disaster_zones: {
         Row: {
@@ -814,6 +888,35 @@ export type Database = {
         }
         Relationships: []
       }
+      postcode_lga_mapping: {
+        Row: {
+          created_at: string | null
+          id: number
+          lga_id: number | null
+          postcode: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: number
+          lga_id?: number | null
+          postcode: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: number
+          lga_id?: number | null
+          postcode?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "postcode_lga_mapping_lga_id_fkey"
+            columns: ["lga_id"]
+            isOneToOne: false
+            referencedRelation: "lgas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       postcode_verifications: {
         Row: {
           confidence_score: number | null
@@ -1056,6 +1159,81 @@ export type Database = {
           updated_at?: string
           user_id?: string
           verified_at?: string | null
+        }
+        Relationships: []
+      }
+      practitioner_verifications: {
+        Row: {
+          agrn_references: string[] | null
+          compliance_notes: string | null
+          disaster_ids: string[] | null
+          id: string
+          ip_address: unknown | null
+          mbs_item_numbers: string[] | null
+          patient_postcode: string | null
+          practitioner_id: string | null
+          user_agent: string | null
+          verification_result: boolean | null
+          verification_timestamp: string | null
+          verification_urls: string[] | null
+        }
+        Insert: {
+          agrn_references?: string[] | null
+          compliance_notes?: string | null
+          disaster_ids?: string[] | null
+          id?: string
+          ip_address?: unknown | null
+          mbs_item_numbers?: string[] | null
+          patient_postcode?: string | null
+          practitioner_id?: string | null
+          user_agent?: string | null
+          verification_result?: boolean | null
+          verification_timestamp?: string | null
+          verification_urls?: string[] | null
+        }
+        Update: {
+          agrn_references?: string[] | null
+          compliance_notes?: string | null
+          disaster_ids?: string[] | null
+          id?: string
+          ip_address?: unknown | null
+          mbs_item_numbers?: string[] | null
+          patient_postcode?: string | null
+          practitioner_id?: string | null
+          user_agent?: string | null
+          verification_result?: boolean | null
+          verification_timestamp?: string | null
+          verification_urls?: string[] | null
+        }
+        Relationships: []
+      }
+      scraping_logs: {
+        Row: {
+          disasters_found: number | null
+          disasters_validated: number | null
+          error_message: string | null
+          id: string
+          source: string | null
+          status: string | null
+          timestamp: string | null
+        }
+        Insert: {
+          disasters_found?: number | null
+          disasters_validated?: number | null
+          error_message?: string | null
+          id?: string
+          source?: string | null
+          status?: string | null
+          timestamp?: string | null
+        }
+        Update: {
+          disasters_found?: number | null
+          disasters_validated?: number | null
+          error_message?: string | null
+          id?: string
+          source?: string | null
+          status?: string | null
+          timestamp?: string | null
         }
         Relationships: []
       }

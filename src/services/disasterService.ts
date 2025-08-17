@@ -38,18 +38,31 @@ export async function verifyPostcode(postcode: string): Promise<VerificationResu
     throw new Error('Postcode not found');
   }
   
-  // Step 2: Check for active disasters in this LGA
+  // Step 2: Check for active disasters in this LGA - ONLY REAL DATA
   const { data: disasters, error: disasterError } = await supabase
     .from('disaster_declarations')
     .select('*')
     .eq('lga_code', postcodeData.lgas.lga_code)
-    .eq('declaration_status', 'active');
+    .eq('declaration_status', 'active')
+    .neq('source_system', 'DisasterAssist') // Exclude any remaining fake data
+    .not('postcodes', 'is', null) // Only include entries with real postcode data
+    .not('description', 'like', '%Mock%') // Exclude any mock descriptions
+    .not('description', 'like', '%test%'); // Exclude any test descriptions
   
   if (disasterError) {
     throw disasterError;
   }
   
-  const inDisasterZone = disasters && disasters.length > 0;
+  // Data provenance check - ensure all disasters have valid sources
+  const verifiedDisasters = disasters?.filter(d => 
+    d.source_system && 
+    d.declaration_authority && 
+    d.source_url &&
+    d.postcodes &&
+    d.postcodes.length > 0
+  ) || [];
+  
+  const inDisasterZone = verifiedDisasters.length > 0;
   
   // Step 3: Record verification
   await supabase
@@ -58,9 +71,10 @@ export async function verifyPostcode(postcode: string): Promise<VerificationResu
       postcode,
       lga_code: postcodeData.lgas.lga_code,
       is_disaster_zone: inDisasterZone,
-      disaster_count: disasters?.length || 0,
+      disaster_count: verifiedDisasters.length,
       verification_timestamp: new Date().toISOString(),
-      source: 'WEB'
+      source: 'WEB',
+      data_integrity_verified: true
     });
   
   return {
@@ -71,17 +85,19 @@ export async function verifyPostcode(postcode: string): Promise<VerificationResu
       name: postcodeData.lgas.name
     },
     inDisasterZone,
-    disasters: disasters?.map(d => ({
+    disasters: verifiedDisasters.map(d => ({
       type: d.disaster_type,
       severity: d.severity_level,
       authority: d.declaration_authority,
       description: d.description,
-      declaredDate: d.declaration_date
-    })) || [],
+      declaredDate: d.declaration_date,
+      sourceSystem: d.source_system,
+      sourceUrl: d.source_url
+    })),
     verifiedAt: new Date().toISOString(),
     message: inDisasterZone 
-      ? `This postcode IS in a declared disaster zone (${disasters.length} active disaster${disasters.length > 1 ? 's' : ''})` 
-      : 'This postcode is NOT in a declared disaster zone'
+      ? `✅ VERIFIED: This postcode IS in a declared disaster zone (${verifiedDisasters.length} verified disaster${verifiedDisasters.length > 1 ? 's' : ''})` 
+      : '✅ VERIFIED: This postcode is NOT in a declared disaster zone'
   };
 }
 
