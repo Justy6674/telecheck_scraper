@@ -1,0 +1,64 @@
+# Page snapshot
+
+```yaml
+- region "Notifications (F8)":
+  - list
+- region "Notifications alt+T"
+- main:
+  - img
+  - heading "TeleCheck" [level=1]
+  - paragraph: Australian Telehealth Disaster Verification
+  - button "Telehealth Rules"
+  - button "How to Use"
+  - button "FAQ"
+  - button "About"
+  - button "Sign In"
+  - button "Subscribe"
+  - heading "Instant MBS Telehealth Disaster Verification" [level=2]
+  - paragraph: Real-time verification of Australian disaster declarations for healthcare providers. Ensure MBS compliance for telehealth exemptions with sub-second response times.
+  - img
+  - heading "MBS Compliant" [level=3]
+  - paragraph: November 2025 NP rules ready
+  - img
+  - heading "Real-time Updates" [level=3]
+  - paragraph: Live government data feeds
+  - img
+  - heading "Auto Documentation" [level=3]
+  - paragraph: Generate compliant notes
+  - heading "Quick Postcode Check" [level=3]:
+    - img
+    - text: Quick Postcode Check
+  - paragraph: Instantly verify if a postcode is affected by an active disaster declaration
+  - textbox "Enter 4-digit postcode (e.g., 4870)": "4000"
+  - button "Verify"
+  - paragraph: For full verification features and compliance documentation
+  - button "Create Healthcare Provider Account"
+  - heading "Current Population Living in Declared Natural Disaster Zones Across Australia" [level=3]:
+    - img
+    - text: Current Population Living in Declared Natural Disaster Zones Across Australia
+  - text: 8 of 8 states/territories with active declarations • 28 total active disaster declarations NSW
+  - img
+  - text: 7 New South Wales 7 LGAs affected VIC
+  - img
+  - text: 4 Victoria 4 LGAs affected QLD
+  - img
+  - text: 6 Queensland 6 LGAs affected WA
+  - img
+  - text: 3 Western Australia 3 LGAs affected SA
+  - img
+  - text: 2 South Australia 2 LGAs affected TAS
+  - img
+  - text: 2 Tasmania 2 LGAs affected NT
+  - img
+  - text: 1 Northern Territory 1 LGA affected ACT
+  - img
+  - text: 3 Australian Capital Territory 3 LGAs affected
+  - paragraph:
+    - strong: "Real-time data:"
+    - text: Population calculations based on current disaster declarations from Australian Government sources. LGA-level declarations updated continuously.
+  - heading "Ready to Streamline Your Telehealth Compliance?" [level=3]
+  - paragraph: Join hundreds of Australian healthcare providers using TeleCheck for instant MBS-compliant disaster verification and automated documentation.
+  - button "Start Free Trial"
+  - button "Schedule Demo"
+  - paragraph: ✓ 14-day free trial • ✓ No setup fees • ✓ Cancel anytime
+```
