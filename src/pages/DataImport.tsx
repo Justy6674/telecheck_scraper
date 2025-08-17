@@ -25,11 +25,11 @@ export default function DataImport() {
       let response;
       
       if (importType === 'disasters') {
-        response = await supabase.functions.invoke('disaster-scraper', {
+        response = await supabase.functions.invoke('live-disaster-loader', {
           body: { source_type: 'all', force_refresh: true }
         });
       } else {
-        response = await supabase.functions.invoke('data-import', {
+        response = await supabase.functions.invoke('comprehensive-data-loader', {
           body: { import_type: importType, force_reload: true }
         });
       }
