@@ -68,6 +68,25 @@ const Index = () => {
     setResult(null);
 
     try {
+      const { data: postcodeRow, error: pcErr } = await supabase
+        .from('postcodes')
+        .select(`
+          postcode,
+          suburb,
+          lgas:primary_lga_id (
+            lga_code,
+            name
+          )
+        `)
+        .eq('postcode', postcode)
+        .maybeSingle();
+
+      if (pcErr || !postcodeRow?.lgas?.lga_code) {
+        throw pcErr || new Error('Postcode not found');
+      }
+
+      const lgaCode = postcodeRow.lgas.lga_code;
+
       const { data: disasters, error } = await supabase
         .from('disaster_declarations')
         .select(`
@@ -76,13 +95,11 @@ const Index = () => {
           severity_level,
           declaration_date,
           declaration_authority,
-          lga_registry (
-            lga_name,
-            lga_code
-          )
+          expiry_date
         `)
         .eq('declaration_status', 'active')
-        .contains('postcodes', [postcode]);
+        .eq('lga_code', lgaCode)
+        .order('declaration_date', { ascending: false });
 
       if (error) throw error;
 
