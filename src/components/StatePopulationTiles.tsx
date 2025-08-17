@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Users, AlertTriangle, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface StateData {
@@ -26,74 +27,72 @@ const AUSTRALIAN_STATES = [
 export function StatePopulationTiles() {
   const [stateData, setStateData] = useState<StateData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+
+  const fetchDisasterData = async () => {
+    try {
+      setLoading(true);
+      // Fetch active disasters
+      const { data: disasters, error } = await supabase
+        .from('disaster_declarations')
+        .select('state_code, lga_code')
+        .eq('declaration_status', 'active');
+
+      if (error) {
+        console.error('Error fetching disaster data:', error);
+        return;
+      }
+
+      // Get unique LGA codes to fetch population data
+      const uniqueLgaCodes = [...new Set(disasters?.map(d => d.lga_code) || [])];
+      
+      // Fetch LGA population data
+      const { data: lgas } = await supabase
+        .from('lgas')
+        .select('lga_code, population')
+        .in('lga_code', uniqueLgaCodes);
+
+      // Create LGA population lookup
+      const lgaPopulations: { [code: string]: number } = {};
+      lgas?.forEach(lga => {
+        if (lga.lga_code) {
+          lgaPopulations[lga.lga_code] = lga.population || 0;
+        }
+      });
+
+      // Process data by state
+      const stateStats: { [key: string]: StateData } = {};
+      AUSTRALIAN_STATES.forEach(state => {
+        stateStats[state.code] = {
+          code: state.code,
+          name: state.name,
+          activeDisasters: 0,
+          affectedLGAs: [],
+          affectedPopulation: 0
+        };
+      });
+
+      disasters?.forEach(disaster => {
+        const stateCode = disaster.state_code?.toUpperCase();
+        if (stateCode && stateStats[stateCode]) {
+          stateStats[stateCode].activeDisasters++;
+          if (!stateStats[stateCode].affectedLGAs.includes(disaster.lga_code)) {
+            stateStats[stateCode].affectedLGAs.push(disaster.lga_code);
+            const lgaPopulation = lgaPopulations[disaster.lga_code] || 0;
+            stateStats[stateCode].affectedPopulation += lgaPopulation;
+          }
+        }
+      });
+
+      setStateData(Object.values(stateStats));
+    } catch (error) {
+      console.error('Error processing disaster data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchDisasterData = async () => {
-      try {
-        // Fetch active disasters
-        const { data: disasters, error } = await supabase
-          .from('disaster_declarations')
-          .select('state_code, lga_code')
-          .eq('declaration_status', 'active');
-
-        if (error) {
-          console.error('Error fetching disaster data:', error);
-          return;
-        }
-
-        // Get unique LGA codes to fetch population data
-        const uniqueLgaCodes = [...new Set(disasters?.map(d => d.lga_code) || [])];
-        
-        // Fetch LGA population data
-        const { data: lgas } = await supabase
-          .from('lgas')
-          .select('lga_code, population')
-          .in('lga_code', uniqueLgaCodes);
-
-        // Create LGA population lookup
-        const lgaPopulations: { [code: string]: number } = {};
-        lgas?.forEach(lga => {
-          if (lga.lga_code) {
-            lgaPopulations[lga.lga_code] = lga.population || 0;
-          }
-        });
-
-        // Process data by state
-        const stateStats: { [key: string]: StateData } = {};
-        
-        // Initialize all states with zero counts
-        AUSTRALIAN_STATES.forEach(state => {
-          stateStats[state.code] = {
-            code: state.code,
-            name: state.name,
-            activeDisasters: 0,
-            affectedLGAs: [],
-            affectedPopulation: 0
-          };
-        });
-
-        // Count disasters and calculate affected population by state
-        disasters?.forEach(disaster => {
-          const stateCode = disaster.state_code?.toUpperCase();
-          if (stateCode && stateStats[stateCode]) {
-            stateStats[stateCode].activeDisasters++;
-            if (!stateStats[stateCode].affectedLGAs.includes(disaster.lga_code)) {
-              stateStats[stateCode].affectedLGAs.push(disaster.lga_code);
-              // Add LGA population to state total
-              const lgaPopulation = lgaPopulations[disaster.lga_code] || 0;
-              stateStats[stateCode].affectedPopulation += lgaPopulation;
-            }
-          }
-        });
-
-        setStateData(Object.values(stateStats));
-      } catch (error) {
-        console.error('Error processing disaster data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchDisasterData();
 
     // Set up real-time subscription
@@ -116,6 +115,20 @@ export function StatePopulationTiles() {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  const runLiveSync = async () => {
+    try {
+      setSyncing(true);
+      await supabase.functions.invoke('disasterassist-sync', {
+        body: { automated: false }
+      });
+      await fetchDisasterData();
+    } catch (e) {
+      console.error('Live sync failed', e);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -151,10 +164,16 @@ export function StatePopulationTiles() {
     <Card className="max-w-6xl mx-auto shadow-medical">
       <CardContent className="p-6">
         <div className="mb-6">
-          <h3 className="text-xl font-semibold mb-2 flex items-center gap-2">
-            <Users className="h-5 w-5 text-primary" />
-            Current Population Living in Declared Natural Disaster Zones Across Australia
-          </h3>
+          <div className="flex items-start justify-between mb-2">
+            <h3 className="text-xl font-semibold flex items-center gap-2">
+              <Users className="h-5 w-5 text-primary" />
+              Current Population Living in Declared Natural Disaster Zones Across Australia
+            </h3>
+            <Button variant="outline" size="sm" onClick={runLiveSync} disabled={syncing}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+              {syncing ? 'Refreshing…' : 'Refresh live data'}
+            </Button>
+          </div>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <span>{totalAffectedStates} of 8 states/territories with active declarations</span>
             <span>•</span>
