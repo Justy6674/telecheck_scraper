@@ -180,21 +180,76 @@ export async function verifyPostcode(postcode: string, asOfDate?: string, liveCh
   }
 }
 
-// Live verification function
 export async function liveVerifyPostcode(postcode: string, serviceDate?: string): Promise<any> {
-  const response = await supabase.functions.invoke('live-disaster-check', {
-    body: { 
-      postcode, 
-      serviceDate, 
-      recheckSources: true 
+  try {
+    console.log(`Starting live verification for postcode: ${postcode}`);
+    
+    const { data, error } = await supabase.functions.invoke('live-disaster-check', {
+      body: { postcode, serviceDate }
+    });
+
+    if (error) {
+      console.error('Live verification function error:', error);
+      throw error;
     }
-  })
-
-  if (response.error) {
-    throw new Error(`Live verification failed: ${response.error.message}`)
+    
+    console.log('Live verification result:', data);
+    return data;
+  } catch (error) {
+    console.error('Live verification error:', error);
+    
+    // Fallback: try direct disaster assist check
+    try {
+      console.log('Attempting fallback verification...');
+      const fallbackResult = await fallbackDisasterCheck(postcode);
+      return fallbackResult;
+    } catch (fallbackError) {
+      console.error('Fallback verification also failed:', fallbackError);
+      throw error;
+    }
   }
+}
 
-  return response.data
+async function fallbackDisasterCheck(postcode: string): Promise<any> {
+  // Emergency fallback - check if there are ANY active disasters and assume risk
+  const { data: anyActiveDisasters } = await supabase
+    .from('disaster_declarations')
+    .select('*')
+    .eq('declaration_status', 'active')
+    .limit(1);
+
+  // Get postcode info
+  const { data: postcodeData } = await supabase
+    .from('postcodes')
+    .select(`
+      *,
+      lgas:primary_lga_id (
+        name,
+        lga_code,
+        states_territories:state_territory_id (
+          code,
+          name
+        )
+      )
+    `)
+    .eq('postcode', postcode)
+    .single();
+
+  const hasActiveDisasters = anyActiveDisasters && anyActiveDisasters.length > 0;
+
+  return {
+    postcode,
+    isDisasterZone: hasActiveDisasters, // Conservative approach
+    disasters: anyActiveDisasters || [],
+    lgaName: postcodeData?.lgas?.name || 'Unknown',
+    state: postcodeData?.lgas?.states_territories?.code || 'Unknown',
+    confidence: 'low',
+    source: 'fallback',
+    lastUpdated: new Date().toISOString(),
+    note: hasActiveDisasters 
+      ? 'Active disasters detected in Australia - telehealth exemption may apply'
+      : 'No active disasters detected - standard rules apply'
+  };
 }
 
 export async function getActiveDisasters() {

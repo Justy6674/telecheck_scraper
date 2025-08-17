@@ -14,7 +14,7 @@ interface DisasterEvent {
   endDate: string | null
   status: 'Open' | 'Closed'
   state: string
-  lgas: string[]
+  lgaNames: string[]
   sourceUrl: string
   declarationAuthority: string
 }
@@ -45,7 +45,7 @@ serve(async (req) => {
     for (const disaster of allDisasters) {
       try {
         // Map LGA names to codes where possible
-        const lgaMappings = await mapLgasToCode(supabase, disaster.lgas)
+        const lgaMappings = await mapLgasToCode(supabase, disaster.lgaNames)
         
         const dbRecord = {
           agrn_reference: disaster.agrn,
@@ -142,67 +142,138 @@ serve(async (req) => {
 })
 
 async function crawlAllDisasters(): Promise<DisasterEvent[]> {
-  const mainUrl = 'https://www.disasterassist.gov.au/find-a-disaster/australian-disasters'
-  
   console.log('Fetching main disasters page...')
-  const response = await fetch(mainUrl, {
-    headers: {
-      'User-Agent': 'DisasterCheck-Australia/1.0 (Healthcare Compliance System)',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-    }
-  })
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch disasters page: ${response.status}`)
-  }
-
-  const html = await response.text()
   
-  // Extract disaster links from the main table
-  let disasterLinks = extractDisasterLinksFromTable(html)
-  console.log(`Found ${disasterLinks.length} disaster links`)
-  
-  // Fallback: try homepage "Major events" if table extraction failed
-  if (disasterLinks.length === 0) {
-    console.log('No links from table. Falling back to homepage major events...')
-    const homeRes = await fetch('https://www.disasterassist.gov.au', { headers: { 'User-Agent': 'DisasterCheck-Australia/1.0 (Healthcare Compliance System)' } })
-    if (homeRes.ok) {
-      const homeHtml = await homeRes.text()
-      disasterLinks = extractDisasterLinksFromTable(homeHtml)
-      console.log(`Fallback found ${disasterLinks.length} links`)
-    }
-  }
-  
+  // Try multiple approaches to find disaster links
   const disasters: DisasterEvent[] = []
-
-  // Follow each disaster link to get detailed information
-  for (const link of disasterLinks) {
-    try {
-      const disasterDetail = await crawlDisasterDetail(link)
-      if (disasterDetail) {
-        disasters.push(disasterDetail)
+  
+  // Method 1: Try the main disasters listing page
+  try {
+    const response = await fetch('https://www.disasterassist.gov.au/find-a-disaster/australian-disasters', {
+      headers: { 'User-Agent': 'DisasterCheck-Australia/1.0 (Healthcare Compliance System)' }
+    })
+    
+    if (response.ok) {
+      const html = await response.text()
+      let disasterLinks = extractDisasterLinksFromTable(html)
+      console.log(`Method 1 found ${disasterLinks.length} disaster links`)
+      
+      if (disasterLinks.length === 0) {
+        // Try alternative selectors for the current page structure
+        disasterLinks = extractLinksAlternative(html)
+        console.log(`Alternative extraction found ${disasterLinks.length} links`)
       }
-      // Small delay between requests
-      await new Promise(resolve => setTimeout(resolve, 300))
+      
+      for (const link of disasterLinks.slice(0, 50)) { // Limit to prevent timeouts
+        try {
+          const disaster = await crawlDisasterDetail(link)
+          if (disaster) disasters.push(disaster)
+        } catch (error) {
+          console.error(`Error crawling ${link}:`, error)
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Method 1 failed:', error)
+  }
+  
+  // Method 2: If still no results, try sitemap approach
+  if (disasters.length === 0) {
+    console.log('Trying sitemap approach...')
+    try {
+      const sitemapResponse = await fetch('https://www.disasterassist.gov.au/sitemap.xml', {
+        headers: { 'User-Agent': 'DisasterCheck-Australia/1.0 (Healthcare Compliance System)' }
+      })
+      
+      if (sitemapResponse.ok) {
+        const sitemapXml = await sitemapResponse.text()
+        const sitemapLinks = extractLinksFromSitemap(sitemapXml)
+        console.log(`Sitemap found ${sitemapLinks.length} disaster links`)
+        
+        for (const link of sitemapLinks.slice(0, 20)) {
+          try {
+            const disaster = await crawlDisasterDetail(link)
+            if (disaster) disasters.push(disaster)
+          } catch (error) {
+            console.error(`Error crawling sitemap link ${link}:`, error)
+          }
+        }
+      }
     } catch (error) {
-      console.error(`Error crawling disaster detail ${link}:`, error)
+      console.error('Sitemap method failed:', error)
     }
   }
 
+  console.log(`Total disasters found: ${disasters.length}`)
   return disasters
 }
 
 function extractDisasterLinksFromTable(html: string): string[] {
   const doc = new DOMParser().parseFromString(html, 'text/html')
   if (!doc) return []
-  const anchors = Array.from(doc.querySelectorAll('a[href*="/Pages/disasters/"]')) as any[]
-  const links = anchors
-    .map((a: any) => a.getAttribute('href'))
-    .filter(Boolean)
-    .map((url: string) => url.startsWith('http') ? url : `https://www.disasterassist.gov.au${url}`)
-    .filter((url: string, index: number, array: string[]) => array.indexOf(url) === index)
+  
+  // Try multiple selectors for disaster links
+  const selectors = [
+    'a[href*="/Pages/disasters/"]',
+    'a[href*="/disaster/"]', 
+    'a[href*="AGRN"]',
+    'table a[href*=".aspx"]',
+    '.disaster-link a',
+    '.table a'
+  ]
+  
+  let allLinks: string[] = []
+  
+  for (const selector of selectors) {
+    const anchors = Array.from(doc.querySelectorAll(selector)) as any[]
+    const links = anchors
+      .map((a: any) => a.getAttribute('href'))
+      .filter(Boolean)
+      .filter((url: string) => url.includes('disaster') || url.includes('AGRN'))
+      .map((url: string) => url.startsWith('http') ? url : `https://www.disasterassist.gov.au${url}`)
+    
+    allLinks = [...allLinks, ...links]
+  }
+  
+  // Remove duplicates
+  const uniqueLinks = [...new Set(allLinks)]
+  console.log(`Extracted ${uniqueLinks.length} unique disaster links via DOM`)
+  return uniqueLinks
+}
 
-  console.log(`Extracted ${links.length} unique disaster links via DOM`)
+function extractLinksAlternative(html: string): string[] {
+  // Regex fallback for current page structure
+  const patterns = [
+    /href="([^"]*\/Pages\/disasters\/[^"]*\.aspx)"/gi,
+    /href="([^"]*disaster[^"]*\.aspx)"/gi,
+    /href="([^"]*AGRN[^"]*\.aspx)"/gi
+  ]
+  
+  let allMatches: string[] = []
+  
+  for (const pattern of patterns) {
+    const matches = html.match(pattern) || []
+    const links = matches
+      .map(match => match.replace(/href="([^"]*)"/, '$1'))
+      .map(url => url.startsWith('http') ? url : `https://www.disasterassist.gov.au${url}`)
+    
+    allMatches = [...allMatches, ...links]
+  }
+  
+  const uniqueLinks = [...new Set(allMatches)]
+  console.log(`Alternative extraction found ${uniqueLinks.length} links`)
+  return uniqueLinks
+}
+
+function extractLinksFromSitemap(xml: string): string[] {
+  const urlPattern = /<loc>(.*?\/Pages\/disasters\/.*?\.aspx)<\/loc>/gi
+  const matches = xml.match(urlPattern) || []
+  
+  const links = matches
+    .map(match => match.replace(/<loc>(.*?)<\/loc>/, '$1'))
+    .filter((url, index, array) => array.indexOf(url) === index)
+  
+  console.log(`Sitemap extraction found ${links.length} links`)
   return links
 }
 
@@ -269,11 +340,7 @@ async function crawlDisasterDetail(url: string): Promise<DisasterEvent | null> {
     }
     
     // Extract LGA information from content
-    const lgaPattern = /(?:local government area|lga|council|shire|city)s?\s*[:]*\s*([^<\n\r]+)/gi
-    const lgaMatches = html.match(lgaPattern) || []
-    const lgas = lgaMatches.map(match => 
-      match.replace(/(?:local government area|lga|council|shire|city)s?\s*[:]*\s*/gi, '').trim()
-    ).filter(lga => lga.length > 0).slice(0, 5) // limit to 5 LGAs
+    const lgaNames = extractLGAsFromPage(html, new DOMParser().parseFromString(html, 'text/html'))
 
     console.log(`Parsed disaster: ${name} (AGRN: ${agrn}) - ${state} - Active: ${isOngoing}`)
 
@@ -284,7 +351,7 @@ async function crawlDisasterDetail(url: string): Promise<DisasterEvent | null> {
       endDate: endDateMatch ? parseAustralianDate(endDateMatch[1]) : null,
       status: isOngoing ? 'Open' : 'Closed',
       state: state,
-      lgas: lgas.length > 0 ? lgas : [`${state}001`], // fallback LGA code
+      lgaNames: lgaNames.length > 0 ? lgaNames : [`${state}001`], // fallback LGA code
       sourceUrl: url,
       declarationAuthority: 'Australian Government (Disaster Assist)'
     }
@@ -333,4 +400,66 @@ function extractDisasterType(name: string): string {
   if (lowerName.includes('drought')) return 'drought'
   
   return 'other'
+}
+
+function extractLGAsFromPage(html: string, doc?: any): string[] {
+  const lgaNames: string[] = []
+  
+  // Method 1: DOM-based extraction if document is available
+  if (doc) {
+    const lgaSelectors = [
+      '[class*="lga"]', '[id*="lga"]', 
+      '[class*="council"]', '[id*="council"]',
+      'table td', 'ul li', '.content-area p'
+    ]
+    
+    for (const selector of lgaSelectors) {
+      const elements = doc.querySelectorAll(selector)
+      for (const element of elements) {
+        const text = element.textContent || ''
+        const lgaMatches = extractLGANamesFromText(text)
+        lgaNames.push(...lgaMatches)
+      }
+    }
+  }
+  
+  // Method 2: Regex-based extraction from HTML
+  const lgaPatterns = [
+    /Local Government Area[s]?[:\s]*(.*?)(?:\n|<|\.)/gi,
+    /LGA[s]?[:\s]*(.*?)(?:\n|<|\.)/gi,
+    /Council[s]?[:\s]*(.*?)(?:\n|<|\.)/gi,
+    /(?:City|Shire|Council|Region) of ([^<\n,.]+)/gi,
+    /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:City|Shire|Council)/gi,
+    /Affected areas?[:\s]*(.*?)(?:\n|<|\.)/gi
+  ]
+  
+  for (const pattern of lgaPatterns) {
+    let match
+    while ((match = pattern.exec(html)) !== null) {
+      const text = match[1] || match[0]
+      const names = extractLGANamesFromText(text)
+      lgaNames.push(...names)
+    }
+  }
+  
+  // Remove duplicates and filter valid names
+  const uniqueLGAs = [...new Set(lgaNames)]
+    .filter(name => name.length > 2 && name.length < 50)
+    .filter(name => !/^(and|or|the|of|in|on|at|to|for|with)$/i.test(name))
+  
+  console.log(`Extracted ${uniqueLGAs.length} LGA names: ${uniqueLGAs.slice(0, 5).join(', ')}${uniqueLGAs.length > 5 ? '...' : ''}`)
+  return uniqueLGAs
+}
+
+function extractLGANamesFromText(text: string): string[] {
+  const cleaned = text.replace(/<[^>]*>/g, '').replace(/[:\-]/g, ' ')
+  
+  // Split by common separators and clean
+  const potential = cleaned.split(/[,;]/)
+    .map(name => name.trim())
+    .filter(name => name.length > 2)
+    .map(name => name.replace(/^(Local Government Area|LGA|Council|City|Shire|Region)\s+/i, ''))
+    .map(name => name.replace(/\s+(Local Government Area|LGA|Council|City|Shire|Region)$/i, ''))
+  
+  return potential.filter(name => name.length > 2 && name.length < 50)
 }

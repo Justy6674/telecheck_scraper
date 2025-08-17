@@ -1,47 +1,21 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { DOMParser } from "https://deno.land/x/deno_dom/deno-dom-wasm.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-interface LiveCheckRequest {
+interface DisasterCheckResult {
   postcode: string
-  serviceDate?: string
-  recheckSources?: boolean
-}
-
-interface LiveCheckResponse {
-  success: boolean
-  postcode: string
-  inDisasterZone: boolean
-  lga?: {
-    code: string
-    name: string
-  }
-  disasters: Array<{
-    agrn: string
-    eventName: string
-    type: string
-    startDate: string
-    endDate: string | null
-    status: string
-    authority: string
-    verificationUrl: string
-    sourceVerified: boolean
-    lastChecked: string
-  }>
-  sources: Array<{
-    name: string
-    url: string
-    status: 'verified' | 'error' | 'pending'
-    lastChecked: string
-  }>
-  verificationNotes: string
-  copyableText: string
-  disclaimer: string
-  lastSyncTime: string
+  isDisasterZone: boolean
+  disasters: any[]
+  lgaName?: string
+  state?: string
+  confidence: 'high' | 'medium' | 'low'
+  source: 'database' | 'live_scrape' | 'fallback'
+  lastUpdated: string
 }
 
 serve(async (req) => {
@@ -55,141 +29,34 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { postcode, serviceDate, recheckSources }: LiveCheckRequest = await req.json()
+    const { postcode, serviceDate } = await req.json()
 
-    if (!postcode || !/^\d{4}$/.test(postcode)) {
+    
+    if (!postcode) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Valid 4-digit postcode required' }),
+        JSON.stringify({ error: 'Postcode is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    console.log(`Live disaster check for postcode ${postcode}, serviceDate: ${serviceDate}`)
+    console.log(`Live disaster check for postcode: ${postcode}`)
 
-    // Get LGA for postcode
-    const { data: postcodeData } = await supabase
-      .from('postcodes')
-      .select(`
-        id,
-        suburb,
-        lgas!inner(
-          id,
-          lga_code,
-          name
-        )
-      `)
-      .eq('postcode', postcode)
-      .single()
-
-    if (!postcodeData) {
+    // Step 1: Try database lookup first
+    const dbResult = await checkDatabaseFirst(supabase, postcode, serviceDate)
+    if (dbResult && dbResult.disasters.length > 0) {
+      console.log(`Database found ${dbResult.disasters.length} disasters for ${postcode}`)
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Postcode not found in Australian postal database' 
-        }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify(dbResult),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    const lga = postcodeData.lgas
-    console.log(`Found LGA: ${lga.name} (${lga.lga_code})`)
-
-    // Query disasters affecting this LGA
-    const checkDate = serviceDate ? new Date(serviceDate) : new Date()
+    // Step 2: If no database results, try live scraping
+    console.log(`No database results for ${postcode}, attempting live check...`)
+    const liveResult = await performLiveCheck(supabase, postcode)
     
-    const { data: disasters } = await supabase
-      .from('disaster_declarations')
-      .select(`
-        agrn_reference,
-        event_name,
-        disaster_type,
-        declaration_date,
-        expiry_date,
-        declaration_status,
-        declaration_authority,
-        verification_url,
-        data_source,
-        last_sync_timestamp
-      `)
-      .eq('lga_code', lga.lga_code)
-      .eq('declaration_status', 'active')
-      .lte('declaration_date', checkDate.toISOString())
-      .or(`expiry_date.is.null,expiry_date.gte.${checkDate.toISOString()}`)
-
-    console.log(`Found ${disasters?.length || 0} relevant disasters`)
-
-    // Live verification against sources if requested
-    const sourceResults = []
-    if (recheckSources && disasters && disasters.length > 0) {
-      for (const disaster of disasters) {
-        try {
-          const sourceCheck = await verifyDisasterAtSource(disaster)
-          sourceResults.push(sourceCheck)
-        } catch (error) {
-          console.error(`Error checking source for ${disaster.agrn_reference}:`, error)
-          sourceResults.push({
-            name: 'Disaster Assist',
-            url: disaster.verification_url || 'https://www.disasterassist.gov.au',
-            status: 'error',
-            lastChecked: new Date().toISOString()
-          })
-        }
-      }
-    }
-
-    // Format response
-    const inDisasterZone = disasters && disasters.length > 0
-    const disasterDetails = disasters?.map(d => ({
-      agrn: d.agrn_reference || 'Unknown',
-      eventName: d.event_name || d.disaster_type || 'Disaster Declaration',
-      type: d.disaster_type || 'unknown',
-      startDate: d.declaration_date,
-      endDate: d.expiry_date,
-      status: d.expiry_date ? 'Closed' : 'Open (no end date published)',
-      authority: d.declaration_authority || 'Unknown',
-      verificationUrl: d.verification_url || 'https://www.disasterassist.gov.au',
-      sourceVerified: recheckSources,
-      lastChecked: new Date().toISOString()
-    })) || []
-
-    // Generate verification notes
-    const verificationNotes = generateVerificationNotes({
-      postcode,
-      lga,
-      disasters: disasterDetails,
-      serviceDate,
-      inDisasterZone,
-      recheckSources: !!recheckSources
-    })
-
-    // Generate copyable text for practitioner notes
-    const copyableText = generateCopyableText({
-      postcode,
-      lga,
-      disasters: disasterDetails,
-      serviceDate,
-      inDisasterZone,
-      verificationTime: new Date().toISOString()
-    })
-
-    const response: LiveCheckResponse = {
-      success: true,
-      postcode,
-      inDisasterZone,
-      lga: {
-        code: lga.lga_code,
-        name: lga.name
-      },
-      disasters: disasterDetails,
-      sources: sourceResults,
-      verificationNotes,
-      copyableText,
-      disclaimer: "This verification is based on Disaster Assist data. Healthcare providers must confirm current status by checking the provided source URL before claiming telehealth exemptions.",
-      lastSyncTime: disasters && disasters.length > 0 ? disasters[0].last_sync_timestamp : new Date().toISOString()
-    }
-
     return new Response(
-      JSON.stringify(response),
+      JSON.stringify(liveResult),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
@@ -208,130 +75,230 @@ serve(async (req) => {
   }
 })
 
-async function verifyDisasterAtSource(disaster: any): Promise<any> {
-  const url = disaster.verification_url || 'https://www.disasterassist.gov.au'
+async function checkDatabaseFirst(supabase: any, postcode: string, serviceDate?: string): Promise<DisasterCheckResult | null> {
+  try {
+    // Get postcode info with LGA
+    const { data: postcodeData } = await supabase
+      .from('postcodes')
+      .select(`
+        *,
+        lgas:primary_lga_id (
+          name,
+          lga_code,
+          states_territories:state_territory_id (
+            code,
+            name
+          )
+        )
+      `)
+      .eq('postcode', postcode)
+      .single()
+
+    if (!postcodeData) {
+      console.log(`Postcode ${postcode} not found in database`)
+      return null
+    }
+
+    // Check for active disasters affecting this LGA
+    const { data: disasters } = await supabase
+      .from('disaster_declarations')
+      .select('*')
+      .eq('lga_code', postcodeData.lgas?.lga_code)
+      .eq('declaration_status', 'active')
+
+    const isDisasterZone = disasters && disasters.length > 0
+
+    return {
+      postcode,
+      isDisasterZone,
+      disasters: disasters || [],
+      lgaName: postcodeData.lgas?.name,
+      state: postcodeData.lgas?.states_territories?.code,
+      confidence: 'high',
+      source: 'database',
+      lastUpdated: new Date().toISOString()
+    }
+
+  } catch (error) {
+    console.error('Database check error:', error)
+    return null
+  }
+}
+
+async function performLiveCheck(supabase: any, postcode: string): Promise<DisasterCheckResult> {
+  try {
+    // First get postcode LGA info from our database
+    const { data: postcodeData } = await supabase
+      .from('postcodes')
+      .select(`
+        *,
+        lgas:primary_lga_id (
+          name,
+          lga_code,
+          states_territories:state_territory_id (
+            code,
+            name
+          )
+        )
+      `)
+      .eq('postcode', postcode)
+      .single()
+
+    const lgaName = postcodeData?.lgas?.name
+    const state = postcodeData?.lgas?.states_territories?.code
+
+    console.log(`Live checking for postcode ${postcode}, LGA: ${lgaName}, State: ${state}`)
+
+    // Try to scrape current disaster data
+    const liveDisasters = await scrapeLiveDisasterData(lgaName, state, postcode)
+    
+    const isDisasterZone = liveDisasters.length > 0
+
+    // Store the live check result for future reference
+    if (isDisasterZone) {
+      await storeLiveCheckResult(supabase, postcode, liveDisasters, lgaName, state)
+    }
+
+    return {
+      postcode,
+      isDisasterZone,
+      disasters: liveDisasters,
+      lgaName: lgaName || 'Unknown',
+      state: state || 'Unknown',
+      confidence: isDisasterZone ? 'medium' : 'low',
+      source: 'live_scrape',
+      lastUpdated: new Date().toISOString()
+    }
+
+  } catch (error) {
+    console.error('Live check error:', error)
+    
+    // Fallback response
+    return {
+      postcode,
+      isDisasterZone: false,
+      disasters: [],
+      confidence: 'low',
+      source: 'fallback',
+      lastUpdated: new Date().toISOString()
+    }
+  }
+}
+
+async function scrapeLiveDisasterData(lgaName?: string, state?: string, postcode?: string): Promise<any[]> {
+  const disasters: any[] = []
   
   try {
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'DisasterCheck-Australia/1.0 (Healthcare Compliance System)',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-      }
+    // Method 1: Check Disaster Assist main page
+    console.log('Scraping Disaster Assist for live data...')
+    const response = await fetch('https://www.disasterassist.gov.au/find-a-disaster/australian-disasters', {
+      headers: { 'User-Agent': 'DisasterCheck-Australia/1.0 (Healthcare Compliance System)' }
     })
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`)
+    if (response.ok) {
+      const html = await response.text()
+      const doc = new DOMParser().parseFromString(html, 'text/html')
+      
+      if (doc) {
+        // Look for disaster entries that mention our LGA or state
+        const searchTerms = [lgaName, state, postcode].filter(Boolean).map(term => term?.toLowerCase())
+        
+        const tableRows = doc.querySelectorAll('table tr, .disaster-item, .event-row')
+        for (const row of tableRows) {
+          const text = row.textContent?.toLowerCase() || ''
+          
+          // Check if this row mentions our area
+          const hasMatch = searchTerms.some(term => text.includes(term))
+          
+          if (hasMatch) {
+            // Extract disaster info from this row
+            const links = row.querySelectorAll('a')
+            for (const link of links) {
+              const href = link.getAttribute('href')
+              if (href && href.includes('disaster')) {
+                const disasterText = link.textContent?.trim() || 'Unknown Disaster'
+                disasters.push({
+                  name: disasterText,
+                  source_url: href.startsWith('http') ? href : `https://www.disasterassist.gov.au${href}`,
+                  area_mentioned: text,
+                  discovered_via: 'live_scrape'
+                })
+              }
+            }
+          }
+        }
+      }
     }
 
-    const html = await response.text()
-    
-    // Simple verification - check if AGRN still exists on page
-    const agrnExists = disaster.agrn_reference && 
-      html.toLowerCase().includes(disaster.agrn_reference.toLowerCase())
+    // Method 2: Check state emergency services if we have state info
+    if (state && disasters.length === 0) {
+      await checkStateEmergencyServices(state, lgaName, disasters)
+    }
 
-    return {
-      name: 'Disaster Assist',
-      url: url,
-      status: agrnExists ? 'verified' : 'error',
-      lastChecked: new Date().toISOString()
+  } catch (error) {
+    console.error('Live scraping error:', error)
+  }
+
+  console.log(`Live scraping found ${disasters.length} potential disasters`)
+  return disasters
+}
+
+async function checkStateEmergencyServices(state: string, lgaName?: string, disasters: any[] = []): Promise<void> {
+  const stateUrls: Record<string, string> = {
+    'NSW': 'https://www.rfs.nsw.gov.au/fire-information/major-fire-updates',
+    'VIC': 'https://emergency.vic.gov.au/respond/',
+    'QLD': 'https://www.qfes.qld.gov.au/current-incidents',
+    'WA': 'https://www.emergency.wa.gov.au/',
+    'SA': 'https://www.cfs.sa.gov.au/site/current_incidents.jsp',
+    'TAS': 'https://www.fire.tas.gov.au/Show?pageId=colCurrentIncidents',
+    'NT': 'https://ntfrs.com.au/incidents',
+    'ACT': 'https://esa.act.gov.au/current-incidents'
+  }
+
+  const url = stateUrls[state]
+  if (!url) return
+
+  try {
+    console.log(`Checking ${state} emergency services: ${url}`)
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'DisasterCheck-Australia/1.0 (Healthcare Compliance System)' }
+    })
+
+    if (response.ok) {
+      const html = await response.text()
+      
+      // Look for mentions of our LGA in the emergency page
+      if (lgaName && html.toLowerCase().includes(lgaName.toLowerCase())) {
+        disasters.push({
+          name: `Emergency in ${lgaName}, ${state}`,
+          source_url: url,
+          area_mentioned: lgaName,
+          discovered_via: 'state_emergency_check'
+        })
+      }
     }
   } catch (error) {
-    return {
-      name: 'Disaster Assist',
-      url: url,
-      status: 'error',
-      lastChecked: new Date().toISOString()
-    }
+    console.error(`Error checking ${state} emergency services:`, error)
   }
 }
 
-function generateVerificationNotes({
-  postcode,
-  lga,
-  disasters,
-  serviceDate,
-  inDisasterZone,
-  recheckSources
-}: any): string {
-  const verificationTime = new Date().toLocaleString('en-AU', {
-    timeZone: 'Australia/Sydney',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+async function storeLiveCheckResult(supabase: any, postcode: string, disasters: any[], lgaName?: string, state?: string): Promise<void> {
+  try {
+    // Store in postcode_verifications for audit trail
+    await supabase
+      .from('postcode_verifications')
+      .insert({
+        postcode,
+        suburb: lgaName,
+        is_disaster_zone: disasters.length > 0,
+        verification_method: 'live_scrape',
+        data_sources: { live_disasters: disasters },
+        mbs_eligible: disasters.length > 0,
+        created_at: new Date().toISOString()
+      })
 
-  let notes = `TELEHEALTH DISASTER VERIFICATION\n\n`
-  notes += `Verification Time: ${verificationTime} (AEST/AEDT)\n`
-  notes += `Patient Postcode: ${postcode}\n`
-  notes += `LGA: ${lga.name} (${lga.code})\n`
-  notes += `Service Date: ${serviceDate ? new Date(serviceDate).toLocaleDateString('en-AU') : 'Today'}\n`
-  
-  if (recheckSources) {
-    notes += `Live Source Check: Performed\n`
+    console.log(`Stored live check result for ${postcode}`)
+  } catch (error) {
+    console.error('Error storing live check result:', error)
   }
-  
-  notes += `\nRESULT: ${inDisasterZone ? 'DISASTER DECLARATION ACTIVE' : 'NO ACTIVE DISASTER DECLARATION'}\n\n`
-
-  if (inDisasterZone && disasters.length > 0) {
-    notes += `ACTIVE DECLARATIONS:\n`
-    disasters.forEach((d: any, i: number) => {
-      notes += `${i + 1}. ${d.eventName}\n`
-      notes += `   AGRN: ${d.agrn}\n`
-      notes += `   Type: ${d.type}\n`
-      notes += `   Start: ${new Date(d.startDate).toLocaleDateString('en-AU')}\n`
-      notes += `   End: ${d.endDate ? new Date(d.endDate).toLocaleDateString('en-AU') : 'Open (no end date published)'}\n`
-      notes += `   Source: ${d.verificationUrl}\n\n`
-    })
-    
-    notes += `MBS TELEHEALTH STATUS: ELIGIBLE\n`
-    notes += `- Patient is within a declared disaster area\n`
-    notes += `- Standard 12-month relationship requirement waived\n`
-    notes += `- Standard Medicare telehealth item numbers apply\n`
-  } else {
-    notes += `MBS TELEHEALTH STATUS: STANDARD RULES APPLY\n`
-    notes += `- No current disaster declaration affects this postcode\n`
-    notes += `- Standard 12-month relationship requirement applies\n`
-    notes += `- Other exemptions may still apply\n`
-  }
-
-  notes += `\nSOURCE: Disaster Assist (disasterassist.gov.au)\n`
-  notes += `Australian Government authoritative disaster registry\n`
-  notes += `Verification URL: https://www.disasterassist.gov.au/find-a-disaster/australian-disasters\n`
-
-  return notes
-}
-
-function generateCopyableText({
-  postcode,
-  lga,
-  disasters,
-  serviceDate,
-  inDisasterZone,
-  verificationTime
-}: any): string {
-  const date = new Date(verificationTime).toLocaleDateString('en-AU')
-  const time = new Date(verificationTime).toLocaleTimeString('en-AU')
-  
-  let text = `Medicare Telehealth Disaster Verification - ${date} ${time}\n\n`
-  text += `Patient postcode ${postcode} (${lga.name}) `
-  
-  if (inDisasterZone) {
-    text += `IS within an active disaster declaration area. `
-    text += `Medicare telehealth exemption applies - 12-month relationship requirement waived. `
-    
-    if (disasters.length > 0) {
-      text += `Active declaration: ${disasters[0].eventName} (AGRN ${disasters[0].agrn}), `
-      text += `declared ${new Date(disasters[0].startDate).toLocaleDateString('en-AU')}, `
-      text += `${disasters[0].endDate ? 'expires ' + new Date(disasters[0].endDate).toLocaleDateString('en-AU') : 'Open (no end date published)'}. `
-    }
-  } else {
-    text += `is NOT within an active disaster declaration area. `
-    text += `Standard Medicare telehealth rules apply - 12-month relationship requirement unless other exemption applies. `
-  }
-  
-  text += `Source: Disaster Assist (disasterassist.gov.au). Verified ${date} ${time}.`
-  
-  return text
 }
