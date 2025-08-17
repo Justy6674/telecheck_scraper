@@ -56,3 +56,12 @@ verify_jwt = true
 
 [functions.real-scraper-loader]
 verify_jwt = true
+
+[functions.nema-lga-profile-fetch]
+verify_jwt = false
+
+[functions.disasterassist-sync]
+verify_jwt = false
+
+[functions.state-declarations-sync]
+verify_jwt = false
