@@ -98,16 +98,16 @@ const Index = () => {
         postcode,
         declarations: disasters || [],
         message: isEligible 
-          ? "✅ DISASTER EXEMPTION ACTIVE - Telehealth eligible without 12-month relationship"
-          : "❌ No active disaster declaration for this postcode"
+          ? "This postcode may be within an area subject to a current disaster declaration. Please speak with your GP or healthcare provider to confirm whether Medicare telehealth rebates may apply to your situation."
+          : "We couldn't find a current disaster declaration for this postcode. This does not determine your eligibility for Medicare rebates. Please speak with your GP or healthcare provider."
       });
 
       toast({
-        title: isEligible ? "Disaster Exemption Found" : "No Active Declaration",
+        title: isEligible ? "Declaration Found" : "No Current Declaration",
         description: isEligible 
-          ? "Patient eligible for telehealth exemption"
-          : "Standard telehealth rules apply",
-        variant: isEligible ? "default" : "destructive"
+          ? "Please consult your healthcare provider for eligibility"
+          : "Consult your healthcare provider about telehealth options",
+        variant: "default"
       });
 
     } catch (error) {
@@ -206,10 +206,10 @@ const Index = () => {
           <CardHeader className="text-center">
             <CardTitle className="flex items-center justify-center gap-2 text-2xl">
               <Search className="h-6 w-6 text-primary" />
-              Quick Postcode Check
+              Postcode Status Check
             </CardTitle>
             <CardDescription>
-              Instantly verify if a postcode is affected by an active disaster declaration
+              General information only. Eligibility for Medicare telehealth rebates depends on your circumstances and your practitioner's assessment.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -245,37 +245,40 @@ const Index = () => {
                     <AlertDescription className="text-base font-medium">
                       {result.message}
                     </AlertDescription>
-                    {result.eligible && result.declarations.length > 0 && (
-                      <div className="space-y-2">
-                        {result.declarations.map((disaster, index) => (
-                          <div key={index} className="text-sm p-3 rounded bg-background border">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="font-medium capitalize">{disaster.disaster_type}</span>
-                              <Badge variant="destructive">Level {disaster.severity_level}</Badge>
-                            </div>
-                            <p className="text-muted-foreground">
-                              {disaster.lga_registry?.lga_name} • {disaster.declaration_authority}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              <Clock className="inline h-3 w-3 mr-1" />
-                              Declared: {new Date(disaster.declaration_date).toLocaleDateString('en-AU')}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                     {result.eligible && (
+                       <div className="text-sm p-3 rounded bg-muted/50 border">
+                         <p className="text-muted-foreground">
+                           For full declaration details (specific areas, severity levels, and dates), 
+                           healthcare providers can <button 
+                             onClick={() => navigate("/auth")} 
+                             className="text-primary underline hover:text-primary/80"
+                           >
+                             sign in here
+                           </button>.
+                         </p>
+                       </div>
+                     )}
                   </div>
                 </div>
               </Alert>
             )}
 
-            <div className="text-center pt-4 border-t">
-              <p className="text-sm text-muted-foreground mb-3">
-                For full verification features and compliance documentation
+            <div className="space-y-3 pt-4 border-t">
+              <p className="text-xs text-muted-foreground">
+                This tool provides general information only and is not medical, legal, or billing advice. 
+                Always consult your healthcare provider for eligibility and billing guidance.
               </p>
-              <Button onClick={() => navigate("/auth")} className="bg-gradient-primary">
-                Create Healthcare Provider Account
-              </Button>
+              <div className="flex items-center justify-center gap-3">
+                <Button onClick={() => navigate("/auth")} className="bg-gradient-primary">
+                  Ask your practitioner to check
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => window.open('mailto:?subject=Telehealth Eligibility Question&body=Hi Doctor,%0D%0A%0D%0AI would like to ask about my eligibility for Medicare telehealth rebates, particularly if there are any current disaster declarations that might apply to my area (postcode ' + postcode + ').%0D%0A%0D%0AThank you')}
+                >
+                  Email my GP
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
