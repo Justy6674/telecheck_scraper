@@ -82,26 +82,38 @@ async function scrapeDisasters() {
       timeout: 60000
     });
     
-    // Wait for table to load
+    // Wait longer for dynamic content to load
+    console.log('Waiting for page to fully load...');
+    await new Promise(resolve => setTimeout(resolve, 10000));
+    
+    // Try to wait for specific content
     try {
-      await page.waitForSelector('table', { timeout: 10000 });
+      await page.waitForSelector('a[href*="/disasters/"]', { timeout: 15000 });
+      console.log('Found disaster links');
     } catch (e) {
-      console.log('Table not found immediately, continuing...');
+      console.log('No disaster links found, checking page content...');
+      // Debug: check what's on the page
+      const pageText = await page.evaluate(() => document.body.innerText);
+      console.log('Page text preview:', pageText.substring(0, 500));
     }
-    await new Promise(resolve => setTimeout(resolve, 3000));
     
     // Extract disasters from table
     const disasters = await page.evaluate(() => {
       const results = [];
-      // Try multiple selectors to find the table rows
-      const rows = document.querySelectorAll('tbody tr, table tr, .table-responsive tr, [role="table"] tr');
       
-      Array.from(rows).forEach(row => {
-        const cells = row.querySelectorAll('td');
-        if (cells.length >= 5) {
-          const link = row.querySelector('a[href*="/disasters/"]');
-          if (link) {
+      // Look for ALL table rows first
+      const allRows = document.querySelectorAll('tr');
+      console.log(`Found ${allRows.length} total tr elements`);
+      
+      // Filter for rows with disaster links
+      allRows.forEach(row => {
+        const link = row.querySelector('a');
+        if (link && link.href && link.href.includes('/disasters/')) {
+          const cells = row.querySelectorAll('td');
+          if (cells.length >= 5) {
             const endDate = cells[1]?.textContent?.trim() || '';
+            const isActive = !endDate || endDate === '-' || endDate === '–' || endDate === '- -' || endDate === '--' || endDate === '';
+            
             results.push({
               url: link.href,
               start_date: cells[0]?.textContent?.trim() || '',
@@ -109,7 +121,7 @@ async function scrapeDisasters() {
               state: cells[2]?.textContent?.trim() || '',
               type: cells[3]?.textContent?.trim() || '',
               name: cells[4]?.textContent?.trim() || link.textContent?.trim() || '',
-              is_active: !endDate || endDate === '-' || endDate === '–' || endDate === '- -'
+              is_active: isActive
             });
           }
         }
