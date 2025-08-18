@@ -17,7 +17,7 @@
     "scraper:audit": "node test-audit-scraper.mjs",
     "scraper:compare": "node scraper-comparison-engine.mjs",
     "scraper:production": "node scrape-all-disasters-puppeteer.mjs",
-    "start": "node railway-scraper.js",
+    "start": "node railway-production-scraper.js",
     "prepare": "husky install"
   },
   "dependencies": {
