@@ -44,7 +44,7 @@ async function scrapeDisasters() {
   let browser;
   try {
     // Launch Puppeteer with proper args for container
-    browser = await puppeteer.launch({
+    const launchOptions = {
       headless: 'new',
       args: [
         '--no-sandbox',
@@ -55,9 +55,16 @@ async function scrapeDisasters() {
         '--no-zygote',
         '--single-process', // Required for some containers
         '--disable-extensions'
-      ],
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome-stable'
-    });
+      ]
+    };
+    
+    // Only set executablePath if explicitly provided (for Railway)
+    if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+      launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+    }
+    // Otherwise let Puppeteer find Chrome automatically (for local dev)
+    
+    browser = await puppeteer.launch(launchOptions);
 
     const page = await browser.newPage();
     await page.setViewport({ width: 1920, height: 1080 });
