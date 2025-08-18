@@ -13,11 +13,18 @@ import cron from 'node-cron';
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// Supabase connection
+// Supabase connection - MUST use environment variables
 const supabase = createClient(
-  process.env.SUPABASE_URL || 'https://sfbohkqmykagkdmggcxw.supabase.co',
-  process.env.SUPABASE_SERVICE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmYm9oa3FteWthZ2tkbWdnY3h3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTMwMjE2OSwiZXhwIjoyMDcwODc4MTY5fQ.ovWfX_c4BHmK0Nn6xb3kSGYh9xxc3gFr5igow_hHK8Y'
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
 );
+
+// Exit if credentials not provided
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
+  console.error('❌ ERROR: SUPABASE_URL and SUPABASE_SERVICE_KEY environment variables are required');
+  console.error('Set them in Railway dashboard → Variables');
+  process.exit(1);
+}
 
 console.log('🚀 Railway Disaster Scraper Service starting...');
 
