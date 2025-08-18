@@ -22,6 +22,9 @@ import Subscribe from "./pages/Subscribe";
 import Contact from "./pages/Contact";
 import DataImport from "./pages/DataImport";
 import NotFound from "./pages/NotFound";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import HealthMonitoring from "./pages/admin/HealthMonitoring";
+import ClientAnalytics from "./pages/admin/ClientAnalytics";
 
 const queryClient = new QueryClient();
 
@@ -56,6 +59,9 @@ const App = () => (
                         <Route path="/map" element={<DisasterMap />} />
                         <Route path="/analytics" element={<Analytics />} />
                         <Route path="/data-import" element={<DataImport />} />
+                        <Route path="/admin" element={<AdminDashboard />} />
+                        <Route path="/admin/health" element={<HealthMonitoring />} />
+                        <Route path="/admin/clients" element={<ClientAnalytics />} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                     </main>

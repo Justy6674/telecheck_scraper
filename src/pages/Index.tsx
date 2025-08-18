@@ -20,6 +20,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { StatePopulationTiles } from "@/components/StatePopulationTiles";
+import AdminFooter from "@/components/AdminFooter";
 
 const Index = () => {
   const { user } = useAuth();
@@ -322,6 +323,9 @@ const Index = () => {
           </div>
         </div>
       </div>
+      
+      {/* Admin Footer */}
+      <AdminFooter />
     </div>
   );
 };
