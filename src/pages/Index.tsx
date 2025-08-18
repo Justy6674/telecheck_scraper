@@ -21,6 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { StatePopulationTiles } from "@/components/StatePopulationTiles";
 import AdminFooter from "@/components/AdminFooter";
+import { ComingSoonDialog } from "@/components/ui/ComingSoonDialog";
 
 const Index = () => {
   const { user } = useAuth();
@@ -30,6 +31,7 @@ const Index = () => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ eligible: boolean; postcode: string; declarations: any[]; message: string } | null>(null);
   const [activeDisasters, setActiveDisasters] = useState<{ id: string; disaster_type: string; severity_level: number; declaration_date: string; state_code: string; lga_name: string }[]>([]);
+  const [showComingSoon, setShowComingSoon] = useState(false);
 
   useEffect(() => {
     // Always fetch current active disasters for display
@@ -167,7 +169,7 @@ const Index = () => {
               <Button variant="ghost" onClick={() => navigate("/about")}>
                 About
               </Button>
-              <Button variant="outline" onClick={() => navigate(user ? "/dashboard" : "/auth")}>
+              <Button variant="outline" onClick={() => user ? navigate("/dashboard") : setShowComingSoon(true)}>
                 {user ? "Dashboard" : "Sign In"}
               </Button>
               <Button onClick={() => navigate("/subscribe")} className="bg-gradient-primary">
@@ -266,11 +268,11 @@ const Index = () => {
                        <div className="text-sm p-3 rounded bg-muted/50 border">
                          <p className="text-muted-foreground">
                            For full declaration details (specific areas, severity levels, and dates), 
-                           healthcare providers can <button 
-                             onClick={() => navigate("/auth")} 
-                             className="text-primary underline hover:text-primary/80"
-                           >
-                             sign in here
+                            healthcare providers can <button 
+                              onClick={() => setShowComingSoon(true)} 
+                              className="text-primary underline hover:text-primary/80"
+                            >
+                              sign in here
                            </button>.
                          </p>
                        </div>
@@ -286,7 +288,7 @@ const Index = () => {
                 Always consult your healthcare provider for eligibility and billing guidance.
               </p>
               <div className="flex items-center justify-center gap-3">
-                <Button onClick={() => navigate("/auth")} className="bg-gradient-primary">
+                <Button onClick={() => setShowComingSoon(true)} className="bg-gradient-primary">
                   Ask your practitioner to check
                 </Button>
                 <Button 
@@ -315,10 +317,10 @@ const Index = () => {
           </div>
           
           <div className="flex items-center justify-center gap-4">
-            <Button size="lg" onClick={() => navigate("/auth")} className="bg-gradient-primary">
+            <Button size="lg" onClick={() => setShowComingSoon(true)} className="bg-gradient-primary">
               Start Free Trial
             </Button>
-            <Button size="lg" variant="outline" onClick={() => navigate("/auth")}>
+            <Button size="lg" variant="outline" onClick={() => setShowComingSoon(true)}>
               Schedule Demo
             </Button>
           </div>
@@ -331,6 +333,11 @@ const Index = () => {
       
       {/* Admin Footer */}
       <AdminFooter />
+      
+      <ComingSoonDialog 
+        open={showComingSoon} 
+        onOpenChange={setShowComingSoon} 
+      />
     </div>
   );
 };

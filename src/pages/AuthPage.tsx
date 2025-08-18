@@ -9,12 +9,14 @@ import { AlertCircle, Stethoscope, Shield } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
+import { ComingSoonDialog } from "@/components/ui/ComingSoonDialog";
 
 export default function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showComingSoon, setShowComingSoon] = useState(false);
   const { signIn, signUp, user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -28,51 +30,12 @@ export default function AuthPage() {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError("");
-
-    const { error } = await signIn(email, password);
-    
-    if (error) {
-      setError(error.message);
-      toast({
-        title: "Sign In Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Welcome Back!",
-        description: "Successfully signed in to TeleCheck",
-      });
-      navigate("/dashboard");
-    }
-    
-    setLoading(false);
+    setShowComingSoon(true);
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError("");
-
-    const { error } = await signUp(email, password);
-    
-    if (error) {
-      setError(error.message);
-      toast({
-        title: "Sign Up Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Account Created!",
-        description: "Please check your email to verify your account",
-      });
-    }
-    
-    setLoading(false);
+    setShowComingSoon(true);
   };
 
   return (
@@ -208,6 +171,11 @@ export default function AuthPage() {
         <div className="text-center text-sm text-muted-foreground">
           <p>Secure • Compliant • Australian Healthcare Approved</p>
         </div>
+        
+        <ComingSoonDialog 
+          open={showComingSoon} 
+          onOpenChange={setShowComingSoon} 
+        />
       </div>
     </div>
   );

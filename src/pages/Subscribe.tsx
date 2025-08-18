@@ -16,10 +16,12 @@ import {
   BarChart3
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { ComingSoonDialog } from "@/components/ui/ComingSoonDialog";
 
 const Subscribe = () => {
   const navigate = useNavigate();
   const [selectedPlan, setSelectedPlan] = useState<'starter' | 'professional' | 'enterprise'>('professional');
+  const [showComingSoon, setShowComingSoon] = useState(false);
 
   const plans = [
     {
@@ -204,13 +206,13 @@ const Subscribe = () => {
                   <Button 
                     className={`w-full ${plan.popular ? 'bg-gradient-primary' : ''}`}
                     variant={plan.popular ? 'default' : 'outline'}
-                    onClick={() => navigate(plan.id === 'starter' ? '/auth' : '/auth')}
+                    onClick={() => setShowComingSoon(true)}
                   >
-                    {plan.price === 'Free' ? 'Start Free' : 'Start 14-Day Trial'}
+                    {plan.name === 'Single Practitioner' ? 'Get Started' : 'Start 14-Day Trial'}
                     <ArrowRight className="h-4 w-4 ml-2" />
                   </Button>
 
-                  {plan.price !== 'Free' && (
+                  {plan.name !== 'Single Practitioner' && (
                     <p className="text-xs text-center text-muted-foreground">
                       No credit card required for trial
                     </p>
@@ -313,6 +315,11 @@ const Subscribe = () => {
             </Button>
           </div>
         </div>
+        
+        <ComingSoonDialog 
+          open={showComingSoon} 
+          onOpenChange={setShowComingSoon} 
+        />
       </div>
     </div>
   );
