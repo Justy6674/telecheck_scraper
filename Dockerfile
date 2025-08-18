@@ -78,4 +78,4 @@ USER pptruser
 EXPOSE 8080
 
 # Start the application
-CMD ["node", "railway-scraper.js"]
+CMD ["npm", "start"]
