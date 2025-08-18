@@ -76,7 +76,7 @@ async function scrapeDisasters() {
     });
     
     // Wait for content
-    await page.waitForTimeout(5000);
+    await new Promise(resolve => setTimeout(resolve, 5000));
     
     // Extract disasters from table
     const disasters = await page.evaluate(() => {
