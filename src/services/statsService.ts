@@ -16,8 +16,11 @@ export async function getDashboardStats() {
     
     const uniqueLGAs = new Set();
     disasters?.forEach(d => {
-      if (d.affected_areas?.all_lgas) {
-        d.affected_areas.all_lgas.forEach((lga: string) => uniqueLGAs.add(lga));
+      if (d.affected_areas && typeof d.affected_areas === 'object' && 'all_lgas' in d.affected_areas) {
+        const allLgas = (d.affected_areas as any).all_lgas;
+        if (Array.isArray(allLgas)) {
+          allLgas.forEach((lga: string) => uniqueLGAs.add(lga));
+        }
       }
     });
     

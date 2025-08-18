@@ -108,22 +108,23 @@ const HealthMonitoring = () => {
   const calculateCurrentMetrics = async () => {
     try {
       // Calculate data integrity score
-      const { data: totalDisasters } = await supabase
+      const { count: totalCount } = await supabase
         .from('disaster_declarations')
-        .select('id', { count: 'exact' });
+        .select('*', { count: 'exact', head: true });
 
-      const { data: activeDisasters } = await supabase
+      const { count: activeCount } = await supabase
         .from('disaster_declarations')
-        .select('id', { count: 'exact' })
+        .select('*', { count: 'exact', head: true })
         .eq('declaration_status', 'active');
 
-      const { data: nullFields } = await supabase
+      const { count: nullCount } = await supabase
         .from('disaster_declarations')
-        .select('id', { count: 'exact' })
+        .select('*', { count: 'exact', head: true })
         .or('agrn_reference.is.null,event_name.is.null,state_code.is.null');
 
-      const totalCount = totalDisasters?.count || 0;
-      const nullCount = nullFields?.count || 0;
+      const totalCountValue = totalCount || 0;
+      const nullCountValue = nullCount || 0;
+      const activeCountValue = activeCount || 0;
       const integrityScore = totalCountValue > 0 ? ((totalCountValue - nullCountValue) / totalCountValue) * 100 : 0;
 
       // Store health metrics
@@ -139,11 +140,11 @@ const HealthMonitoring = () => {
         },
         {
           metric_name: 'active_disasters',
-          metric_value: activeCount || 0,
+          metric_value: activeCountValue,
           metric_unit: 'count',
           threshold_min: 10,
           threshold_max: 200,
-          is_healthy: (activeCount || 0) >= 10 && (activeCount || 0) <= 200,
+          is_healthy: activeCountValue >= 10 && activeCountValue <= 200,
           metadata: { total_disasters: totalCountValue }
         }
       ]);
