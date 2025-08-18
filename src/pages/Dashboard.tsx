@@ -24,22 +24,7 @@ interface RecentActivity {
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [recentActivity] = useState<RecentActivity[]>([
-    {
-      id: 1,
-      type: 'verification',
-      message: 'Postcode 4000 verified for Flood - Brisbane',
-      timestamp: '2 hours ago',
-      status: 'eligible'
-    },
-    {
-      id: 2,
-      type: 'verification',
-      message: 'Postcode 2000 - No active disasters',
-      timestamp: '4 hours ago',
-      status: 'not_eligible'
-    }
-  ]);
+  const [recentActivity] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [showComingSoon, setShowComingSoon] = useState(false);
 
