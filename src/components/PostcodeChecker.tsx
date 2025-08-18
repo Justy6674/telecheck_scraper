@@ -153,11 +153,23 @@ export function PostcodeChecker() {
                         <div key={index} className="bg-orange-50 p-4 rounded-lg">
                           <div className="flex items-start justify-between">
                             <div>
-                              <div className="font-medium text-orange-900 capitalize">
-                                {disaster.type} - {disaster.description}
+                              <div className="font-bold text-orange-900 text-lg">
+                                {disaster.description}
+                              </div>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="inline-block bg-orange-100 px-2 py-1 rounded text-xs font-medium uppercase">
+                                  {disaster.type}
+                                </span>
+                                {disaster.agrn && (
+                                  <span className="text-xs text-gray-600">
+                                    {disaster.agrn}
+                                  </span>
+                                )}
                               </div>
                               <div className="text-xs text-gray-500 mt-2">
-                                Declared by {disaster.authority} • Severity: {disaster.severity}/5
+                                Declared: {disaster.startDate ? new Date(disaster.startDate).toLocaleDateString('en-AU') : 'Unknown'} • 
+                                Authority: {disaster.authority} • 
+                                Severity: {disaster.severity}/5
                               </div>
                             </div>
                             <button

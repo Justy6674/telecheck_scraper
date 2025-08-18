@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚨 Telecheck Disaster Alerts Dashboard - Medicare Compliance</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            color: #2d3748;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        
+        .header .subtitle {
+            color: #718096;
+            font-size: 18px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            transition: transform 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .stat-number {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #718096;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .active { color: #48bb78; }
+        .ended { color: #e53e3e; }
+        .warning { color: #ed8936; }
+        .info { color: #4299e1; }
+        
+        .alerts-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        
+        .section-title {
+            font-size: 24px;
+            color: #2d3748;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .alert {
+            border-left: 5px solid;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            background: #f7fafc;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .alert-critical {
+            border-color: #e53e3e;
+            background: #fff5f5;
+        }
+        
+        .alert-warning {
+            border-color: #ed8936;
+            background: #fffdf7;
+        }
+        
+        .alert-info {
+            border-color: #48bb78;
+            background: #f0fff4;
+        }
+        
+        .alert-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 15px;
+        }
+        
+        .alert-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2d3748;
+        }
+        
+        .alert-date {
+            color: #718096;
+            font-size: 14px;
+        }
+        
+        .alert-body {
+            color: #4a5568;
+            line-height: 1.6;
+        }
+        
+        .alert-lgas {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .lga-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .lga-badge {
+            background: #edf2f7;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            color: #4a5568;
+        }
+        
+        .acknowledge-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: transform 0.2s;
+        }
+        
+        .acknowledge-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .acknowledge-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .no-alerts {
+            text-align: centre;
+            padding: 40px;
+            color: #718096;
+            font-size: 18px;
+        }
+        
+        .loading {
+            text-align: centre;
+            padding: 40px;
+            color: white;
+            font-size: 24px;
+        }
+        
+        .last-updated {
+            text-align: right;
+            color: #718096;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        
+        .badge-live {
+            display: inline-block;
+            background: #48bb78;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚨 Telecheck Disaster Alerts Dashboard</h1>
+            <div class="subtitle">
+                Medicare Compliance Monitoring - Prevent $500,000 Fines
+                <span class="badge-live">LIVE</span>
+            </div>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number active" id="activeCount">-</div>
+                <div class="stat-label">Active Disasters</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number ended" id="endedCount">-</div>
+                <div class="stat-label">Ended (Last 30 Days)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number warning" id="warningCount">-</div>
+                <div class="stat-label">LGA Changes</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number info" id="newCount">-</div>
+                <div class="stat-label">New Disasters</div>
+            </div>
+        </div>
+        
+        <div class="alerts-section">
+            <h2 class="section-title">
+                🔴 Critical Alerts - Stop Telehealth Billing
+            </h2>
+            <div id="criticalAlerts">
+                <div class="loading">Loading alerts...</div>
+            </div>
+        </div>
+        
+        <div class="alerts-section">
+            <h2 class="section-title">
+                🟡 Warning Alerts - LGA Changes
+            </h2>
+            <div id="warningAlerts"></div>
+        </div>
+        
+        <div class="alerts-section">
+            <h2 class="section-title">
+                🟢 New Disasters - Telehealth Now Available
+            </h2>
+            <div id="infoAlerts"></div>
+        </div>
+        
+        <div class="last-updated" id="lastUpdated"></div>
+    </div>
+    
+    <script>
+        // Supabase configuration
+        const supabaseUrl = 'https://sfbohkqmykagkdmggcxw.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmYm9oa3FteWthZ2tkbWdnY3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUzMDIxNjksImV4cCI6MjA3MDg3ODE2OX0.INiJshQFqOHg3XdHIDVfXcPzB7YNHIiQi-YvMJFRHBU';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        
+        // Load alerts
+        async function loadAlerts() {
+            try {
+                // Get active disaster count
+                const { data: activeData } = await supabase
+                    .from('disaster_declarations')
+                    .select('*', { count: 'exact', head: true })
+                    .is('expiry_date', null);
+                
+                document.getElementById('activeCount').textContent = activeData?.length || '0';
+                
+                // Get recent status changes
+                const thirtyDaysAgo = new Date();
+                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                
+                const { data: changes } = await supabase
+                    .from('disaster_status_changes')
+                    .select('*')
+                    .gte('created_at', thirtyDaysAgo.toISOString())
+                    .eq('acknowledged', false)
+                    .order('created_at', { ascending: false });
+                
+                // Sort alerts by type
+                const criticalAlerts = changes?.filter(a => a.change_type === 'ended') || [];
+                const warningAlerts = changes?.filter(a => a.change_type === 'lga_removed') || [];
+                const infoAlerts = changes?.filter(a => a.change_type === 'new') || [];
+                
+                // Update counts
+                document.getElementById('endedCount').textContent = criticalAlerts.length;
+                document.getElementById('warningCount').textContent = warningAlerts.length;
+                document.getElementById('newCount').textContent = infoAlerts.length;
+                
+                // Display alerts
+                displayCriticalAlerts(criticalAlerts);
+                displayWarningAlerts(warningAlerts);
+                displayInfoAlerts(infoAlerts);
+                
+                // Update last updated time
+                document.getElementById('lastUpdated').textContent = 
+                    `Last updated: ${new Date().toLocaleString('en-AU')}`;
+                    
+            } catch (error) {
+                console.error('Error loading alerts:', error);
+            }
+        }
+        
+        function displayCriticalAlerts(alerts) {
+            const container = document.getElementById('criticalAlerts');
+            
+            if (alerts.length === 0) {
+                container.innerHTML = '<div class="no-alerts">No critical alerts</div>';
+                return;
+            }
+            
+            container.innerHTML = alerts.map(alert => `
+                <div class="alert alert-critical">
+                    <div class="alert-header">
+                        <div class="alert-title">⚠️ DISASTER ENDED - STOP TELEHEALTH BILLING</div>
+                        <div class="alert-date">Ended: ${formatDate(alert.new_end_date)}</div>
+                    </div>
+                    <div class="alert-body">
+                        <strong>AGRN:</strong> ${alert.agrn_reference}<br>
+                        <strong>Action Required:</strong> Stop using telehealth item numbers for patients in affected areas immediately.
+                    </div>
+                    <div class="alert-lgas">
+                        <strong>Affected LGAs (${alert.affected_lgas?.length || 0}):</strong>
+                        <div class="lga-list">
+                            ${(alert.affected_lgas || []).slice(0, 10).map(lga => 
+                                `<span class="lga-badge">${lga}</span>`
+                            ).join('')}
+                            ${alert.affected_lgas?.length > 10 ? 
+                                `<span class="lga-badge">+${alert.affected_lgas.length - 10} more</span>` : ''}
+                        </div>
+                    </div>
+                    <button class="acknowledge-btn" onclick="acknowledgeAlert('${alert.id}')">
+                        I understand - Mark as read
+                    </button>
+                </div>
+            `).join('');
+        }
+        
+        function displayWarningAlerts(alerts) {
+            const container = document.getElementById('warningAlerts');
+            
+            if (alerts.length === 0) {
+                container.innerHTML = '<div class="no-alerts">No warning alerts</div>';
+                return;
+            }
+            
+            container.innerHTML = alerts.map(alert => `
+                <div class="alert alert-warning">
+                    <div class="alert-header">
+                        <div class="alert-title">⚠️ LGAs Removed from Disaster</div>
+                        <div class="alert-date">Changed: ${formatDate(alert.created_at)}</div>
+                    </div>
+                    <div class="alert-body">
+                        <strong>AGRN:</strong> ${alert.agrn_reference}<br>
+                        <strong>Removed LGAs:</strong> ${(alert.affected_lgas || []).join(', ')}
+                    </div>
+                    <button class="acknowledge-btn" onclick="acknowledgeAlert('${alert.id}')">
+                        Mark as read
+                    </button>
+                </div>
+            `).join('');
+        }
+        
+        function displayInfoAlerts(alerts) {
+            const container = document.getElementById('infoAlerts');
+            
+            if (alerts.length === 0) {
+                container.innerHTML = '<div class="no-alerts">No new disasters</div>';
+                return;
+            }
+            
+            container.innerHTML = alerts.map(alert => `
+                <div class="alert alert-info">
+                    <div class="alert-header">
+                        <div class="alert-title">✅ New Disaster - Telehealth Available</div>
+                        <div class="alert-date">Declared: ${formatDate(alert.created_at)}</div>
+                    </div>
+                    <div class="alert-body">
+                        <strong>AGRN:</strong> ${alert.agrn_reference}<br>
+                        Patients in affected areas are now eligible for telehealth.
+                    </div>
+                    <button class="acknowledge-btn" onclick="acknowledgeAlert('${alert.id}')">
+                        Mark as read
+                    </button>
+                </div>
+            `).join('');
+        }
+        
+        async function acknowledgeAlert(alertId) {
+            try {
+                await supabase
+                    .from('disaster_status_changes')
+                    .update({ acknowledged: true })
+                    .eq('id', alertId);
+                
+                // Reload alerts
+                loadAlerts();
+            } catch (error) {
+                console.error('Error acknowledging alert:', error);
+            }
+        }
+        
+        function formatDate(dateStr) {
+            if (!dateStr) return 'Unknown';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-AU', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+        
+        // Load alerts on page load
+        loadAlerts();
+        
+        // Refresh every 30 seconds
+        setInterval(loadAlerts, 30000);
+        
+        // Subscribe to real-time updates
+        supabase
+            .channel('disaster-changes')
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'disaster_status_changes'
+            }, () => {
+                loadAlerts();
+            })
+            .subscribe();
+    </script>
+</body>
+</html>

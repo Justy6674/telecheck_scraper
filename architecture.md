@@ -19,7 +19,9 @@
 - **Dashboard**: Real-time disaster monitoring, compliance tracking, usage analytics
 
 #### 🚧 **In Development**
-- **Government Data Integration**: Automated scraping from all Australian jurisdictions
+- **Government Data Integration**: Automated scraping from DisasterAssist.gov.au (760+ disasters)
+- **Railway Scraper Service**: Daily Puppeteer scraping of all disaster pages
+- **Complete LGA Extraction**: All affected areas with assistance program details
 - **Practice Management APIs**: Integration with Medical Director, Best Practice, Cliniko
 - **AI Compliance Assistant**: Advanced note generation and policy guidance
 - **Interactive Disaster Map**: Real-time visualization of declarations
@@ -40,9 +42,28 @@
 ```sql
 -- Core Database Schema
 disaster_declarations (
-  id, lga_code, disaster_type, severity_level,
-  declaration_status, postcodes[], declaration_date,
-  expiry_date, declaration_authority
+  id UUID PRIMARY KEY,
+  agrn_reference VARCHAR UNIQUE,  -- e.g., "AGRN-1216"
+  event_name TEXT,                -- Full disaster name
+  lga_code VARCHAR,               -- Primary LGA
+  disaster_type, severity_level,
+  declaration_status, 
+  declaration_date, expiry_date,
+  
+  -- COMPREHENSIVE DATA STORAGE
+  affected_areas JSONB,           -- Contains:
+    -- all_lgas: ["Brisbane", "Bundaberg", ...]
+    -- all_lga_codes: ["31000", "31450", ...]
+    -- assistance_programs: {agdrp, dra, loans}
+    -- payment_amounts: {adult: 1000, child: 400}
+    -- contact_info: {hotline: "180 22 66"}
+    -- related_links: [{text, url}]
+    -- full_page_text: "Complete content for audit"
+  
+  source_url TEXT,                -- DisasterAssist page URL
+  verification_url TEXT,          -- For practitioner verification
+  description TEXT,               -- Full description for copy/paste
+  declaration_authority VARCHAR
 )
 
 practice_registration (
@@ -183,7 +204,86 @@ Payments: Stripe with Australian tax compliance
 
 **Total**: $11K-31K monthly, scaling with usage volume
 
+## Disaster Data Scraping System
+
+### Railway Scraper Service (Puppeteer)
+**Purpose**: Extract complete disaster data from DisasterAssist.gov.au
+
+#### Data Extraction Process:
+1. **Navigate** to disasters list (38+ pages)
+2. **Click** into each disaster detail page (760+ disasters)
+3. **Extract** comprehensive data:
+   - All affected LGAs (not just one)
+   - Assistance programs with varying coverage
+   - Payment amounts and deadlines
+   - Contact information
+   - Full page content for audit
+
+#### Extracted Data Structure:
+```javascript
+{
+  agrn_reference: "AGRN-1216",
+  event_name: "NSW Severe Weather Event",
+  affected_areas: {
+    all_lgas: ["Armidale", "Dungog", "Gunnedah", ...],
+    all_lga_codes: ["11350", "12700", "13550", ...],
+    assistance_programs: {
+      agdrp: { lgas: [...], payment: {adult: 1000, child: 400} },
+      dra: { lgas: [...], deadline: "2025-09-18" },
+      loans: { primary_producer: 75000, small_business: 25000 }
+    },
+    full_page_text: "[Complete content for legal audit]"
+  },
+  source_url: "https://disasterassist.gov.au/...",
+  verification_url: "https://disasterassist.gov.au/..."
+}
+```
+
+### Practitioner Interface Output
+
+**Input**: Patient Postcode (e.g., 2337)
+
+**Output for ELIGIBLE**:
+```
+✅ ELIGIBLE FOR TELEHEALTH
+NSW Severe Weather Event (AGRN-1216)
+Period: 31 July 2025 onwards
+Affected LGA: Armidale
+
+📋 Copy for Medicare:
+"Patient in postcode 2337 (Armidale LGA) eligible for 
+telehealth under disaster declaration AGRN-1216.
+Verify: https://disasterassist.gov.au/..."
+
+[Copy Text] [View Details] [Verify on DisasterAssist]
+```
+
+**Output for POSSIBLY ELIGIBLE**:
+```
+⚠️ POSSIBLY ELIGIBLE (Practitioner Discretion)
+Some areas of this LGA are affected.
+Please verify specific address eligibility.
+```
+
+### Audit & Compliance
+Every search stores:
+- Practitioner ID
+- Postcode searched
+- Disasters returned
+- Eligibility determined
+- Verification URLs provided
+- Timestamp and IP address
+- Full disaster data snapshot
+
+### Critical Requirements
+1. **Accuracy**: Must extract ALL affected LGAs, not just primary
+2. **Completeness**: Store entire page content for legal audit
+3. **Verification**: Always provide direct DisasterAssist URL
+4. **Currency**: Update daily via Railway scraper
+5. **Compliance**: 7-year audit trail retention
+
 ---
 
 *Last Updated: January 2025*
 *Platform Status: MVP Complete, Production Migration In Progress*
+*Scraper Status: Tested, Ready for Full 760+ Import*

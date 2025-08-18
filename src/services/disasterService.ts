@@ -125,19 +125,19 @@ export async function verifyPostcode(postcode: string, asOfDate?: string, liveCh
 
     const inDisasterZone = disasters && disasters.length > 0
     
-    // Format disasters for response
+    // Format disasters for response - SHOW THE ACTUAL DISASTER NAME
     const formattedDisasters = disasters?.map(d => ({
       id: d.id,
       type: d.disaster_type,
-      description: d.description || `${d.disaster_type} disaster`,
+      description: d.event_name || d.description || `${d.disaster_type} disaster in ${d.state_code}`,
       authority: d.declaration_authority,
-      severity: d.severity_level || 3,
+      severity: d.disaster_type === 'flood' ? 4 : d.disaster_type === 'bushfire' ? 5 : 3,
       startDate: d.declaration_date,
       endDate: d.expiry_date,
       agrn: d.agrn_reference,
-      verificationUrl: d.verification_url || 'https://www.disasterassist.gov.au',
+      verificationUrl: d.verification_url || d.source_url || 'https://www.disasterassist.gov.au',
       source: d.data_source || 'disasterassist.gov.au',
-      status: d.expiry_date ? 'Closed' : 'Open'
+      status: d.declaration_status || (d.expiry_date ? 'Closed' : 'Open')
     })) || []
 
     // Record verification for audit

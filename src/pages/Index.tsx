@@ -93,10 +93,15 @@ const Index = () => {
         .select(`
           id,
           disaster_type,
+          event_name,
+          description,
           severity_level,
           declaration_date,
           declaration_authority,
-          expiry_date
+          expiry_date,
+          agrn_reference,
+          source_url,
+          state_code
         `)
         .eq('declaration_status', 'active')
         .eq('lga_code', lgaCode)

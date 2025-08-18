@@ -22,11 +22,36 @@ serve(async (req) => {
     // Get the Railway scraper URL from environment
     const scraperUrl = Deno.env.get('SCRAPER_WORKER_URL')
     
+    console.log('SCRAPER_WORKER_URL:', scraperUrl)
+    
     if (!scraperUrl) {
-      throw new Error('SCRAPER_WORKER_URL not configured. Please set in Supabase dashboard.')
+      // Fallback to known Railway URL if env var not set
+      const fallbackUrl = 'https://tele-check-production.up.railway.app'
+      console.log('Using fallback URL:', fallbackUrl)
+      
+      // Try the fallback
+      const testResponse = await fetch(`${fallbackUrl}/health`)
+      if (testResponse.ok) {
+        console.log('Fallback URL works!')
+        const scraperUrl = fallbackUrl
+      } else {
+        throw new Error('SCRAPER_WORKER_URL not configured and fallback failed. Please set in Supabase dashboard.')
+      }
     }
 
+    // First test the health endpoint
+    console.log('Testing health endpoint:', `${scraperUrl}/health`)
+    const healthCheck = await fetch(`${scraperUrl}/health`)
+    if (!healthCheck.ok) {
+      console.error('Health check failed:', healthCheck.status, await healthCheck.text())
+      throw new Error(`Railway scraper health check failed: ${healthCheck.status}`)
+    }
+    
+    const healthData = await healthCheck.json()
+    console.log('Health check OK:', healthData)
+    
     // Trigger the Railway scraper
+    console.log('Calling sync endpoint:', `${scraperUrl}/sync`)
     const response = await fetch(`${scraperUrl}/sync`, {
       method: 'POST',
       headers: {
@@ -35,7 +60,9 @@ serve(async (req) => {
     })
 
     if (!response.ok) {
-      throw new Error(`Railway scraper failed: ${response.status} ${response.statusText}`)
+      const errorText = await response.text()
+      console.error('Sync failed:', response.status, errorText)
+      throw new Error(`Railway scraper failed: ${response.status} ${response.statusText} - ${errorText}`)
     }
 
     const result = await response.json()

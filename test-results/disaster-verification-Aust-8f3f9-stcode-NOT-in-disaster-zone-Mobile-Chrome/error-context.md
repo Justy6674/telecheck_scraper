@@ -29,8 +29,8 @@
     - img
     - text: Postcode Status Check
   - paragraph: General information only. Eligibility for Medicare telehealth rebates depends on your circumstances and your practitioner's assessment.
-  - textbox "Enter 4-digit postcode (e.g., 4870)"
-  - button "Verify" [disabled]
+  - textbox "Enter 4-digit postcode (e.g., 4870)": "2000"
+  - button "Verify"
   - paragraph: This tool provides general information only and is not medical, legal, or billing advice. Always consult your healthcare provider for eligibility and billing guidance.
   - button "Ask your practitioner to check"
   - button "Email my GP"
@@ -40,15 +40,31 @@
   - button "Refresh live data":
     - img
     - text: Refresh live data
-  - text: 0 of 8 states/territories with active declarations • 0 people affected • 0 total declarations NSW New South Wales No active declarations VIC Victoria No active declarations QLD Queensland No active declarations WA Western Australia No active declarations SA South Australia No active declarations TAS Tasmania No active declarations NT Northern Territory No active declarations ACT Australian Capital Territory No active declarations
+  - text: 8 of 8 states/territories with active declarations • 3.0M people affected • 15 total declarations
+  - img
+  - text: "Last updated: 18/08/2025, 06:26 am • Source: disasterassist.gov.au NSW"
+  - img
+  - text: 3 New South Wales 512K affected 3 LGAs VIC
+  - img
+  - text: 2 Victoria 180K affected 2 LGAs QLD
+  - img
+  - text: 4 Queensland 2.1M affected 4 LGAs WA
+  - img
+  - text: 2 Western Australia 22K affected 2 LGAs SA
+  - img
+  - text: 1 South Australia 25K affected 1 LGA TAS
+  - img
+  - text: 1 Tasmania 54K affected 1 LGA NT
+  - img
+  - text: 1 Northern Territory 83K affected 1 LGA ACT
+  - img
+  - text: 1 Australian Capital Territory 0 affected 1 LGA
+  - paragraph:
+    - strong: "Live data source:"
+    - text: Disaster declarations sourced from DisasterAssist.gov.au - the Australian Government's authoritative disaster registry. Data includes AGRN references, affected LGAs, and declaration status for Medicare telehealth compliance.
   - heading "Ready to Streamline Your Telehealth Compliance?" [level=3]
   - paragraph: Join hundreds of Australian healthcare providers using TeleCheck for instant MBS-compliant disaster verification and automated documentation.
   - button "Start Free Trial"
   - button "Schedule Demo"
   - paragraph: ✓ 14-day free trial • ✓ No setup fees • ✓ Cancel anytime
-- link "Edit with ×":
-  - /url: https://lovable.dev/projects/9e08faf0-bfe1-4d94-ac39-66f672b1e286?utm_source=lovable-badge
-  - text: Edit with
-  - img
-  - button "×"
 ```
