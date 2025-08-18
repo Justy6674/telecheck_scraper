@@ -18,6 +18,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { ComingSoonDialog } from "@/components/ui/ComingSoonDialog";
 
 interface HealthStatus {
   overall: 'healthy' | 'warning' | 'critical';
@@ -45,6 +46,7 @@ const AdminDashboard = () => {
   const [healthStatus, setHealthStatus] = useState<HealthStatus | null>(null);
   const [recentRuns, setRecentRuns] = useState<ScraperRun[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [showComingSoon, setShowComingSoon] = useState(false);
 
   useEffect(() => {
     checkAdminAccess();
@@ -52,7 +54,7 @@ const AdminDashboard = () => {
 
   const checkAdminAccess = async () => {
     if (!user) {
-      navigate('/auth');
+      setShowComingSoon(true);
       return;
     }
 
@@ -77,7 +79,7 @@ const AdminDashboard = () => {
       await fetchDashboardData();
     } catch (error) {
       console.error('Admin access check failed:', error);
-      navigate('/auth');
+      setShowComingSoon(true);
     }
   };
 
@@ -414,6 +416,11 @@ const AdminDashboard = () => {
           </CardHeader>
         </Card>
       </div>
+      
+      <ComingSoonDialog 
+        open={showComingSoon} 
+        onOpenChange={setShowComingSoon} 
+      />
     </div>
   );
 };

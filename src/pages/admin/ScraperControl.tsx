@@ -23,6 +23,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { ComingSoonDialog } from "@/components/ui/ComingSoonDialog";
 
 interface ScraperRun {
   id: string;
@@ -60,6 +61,7 @@ const ScraperControl = () => {
   const [progress, setProgress] = useState(0);
   const [currentStatus, setCurrentStatus] = useState("");
   const [recentRuns, setRecentRuns] = useState<ScraperRun[]>([]);
+  const [showComingSoon, setShowComingSoon] = useState(false);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [liveComparison, setLiveComparison] = useState<any>(null);
 
@@ -83,7 +85,7 @@ const ScraperControl = () => {
 
   const checkAdminAccess = async () => {
     if (!user) {
-      navigate('/auth');
+      setShowComingSoon(true);
       return;
     }
 
@@ -105,7 +107,7 @@ const ScraperControl = () => {
       }
     } catch (error) {
       console.error('Admin access check failed:', error);
-      navigate('/auth');
+      setShowComingSoon(true);
     } finally {
       setLoading(false);
     }
@@ -630,6 +632,11 @@ const ScraperControl = () => {
           </div>
         </CardContent>
       </Card>
+      
+      <ComingSoonDialog 
+        open={showComingSoon} 
+        onOpenChange={setShowComingSoon} 
+      />
     </div>
   );
 };

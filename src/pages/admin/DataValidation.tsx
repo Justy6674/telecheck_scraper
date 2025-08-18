@@ -22,6 +22,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { ComingSoonDialog } from "@/components/ui/ComingSoonDialog";
 
 interface ValidationReport {
   id: string;
@@ -84,6 +85,7 @@ const DataValidation = () => {
   const [selectedReport, setSelectedReport] = useState<ValidationReport | null>(null);
   const [liveComparison, setLiveComparison] = useState<DisasterComparison[]>([]);
   const [compareLoading, setCompareLoading] = useState(false);
+  const [showComingSoon, setShowComingSoon] = useState(false);
 
   useEffect(() => {
     checkAdminAccess();
@@ -92,7 +94,7 @@ const DataValidation = () => {
 
   const checkAdminAccess = async () => {
     if (!user) {
-      navigate('/auth');
+      setShowComingSoon(true);
       return;
     }
 
@@ -114,7 +116,7 @@ const DataValidation = () => {
       }
     } catch (error) {
       console.error('Admin access check failed:', error);
-      navigate('/auth');
+      setShowComingSoon(true);
     } finally {
       setLoading(false);
     }
@@ -589,6 +591,11 @@ const DataValidation = () => {
           </ScrollArea>
         </CardContent>
       </Card>
+      
+      <ComingSoonDialog 
+        open={showComingSoon} 
+        onOpenChange={setShowComingSoon} 
+      />
     </div>
   );
 };

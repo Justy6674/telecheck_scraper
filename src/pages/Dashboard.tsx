@@ -18,6 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
+import { ComingSoonDialog } from "@/components/ui/ComingSoonDialog";
 
 interface DashboardStats {
   activeDisasters: number;
@@ -62,10 +63,11 @@ export default function Dashboard() {
   const [recentVerifications, setRecentVerifications] = useState<RecentVerification[]>([]);
   const [activeDisasters, setActiveDisasters] = useState<ActiveDisaster[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showComingSoon, setShowComingSoon] = useState(false);
 
   useEffect(() => {
     if (!user) {
-      navigate("/auth");
+      setShowComingSoon(true);
       return;
     }
     fetchDashboardData();
@@ -416,6 +418,11 @@ export default function Dashboard() {
           </div>
         </CardContent>
       </Card>
+      
+      <ComingSoonDialog 
+        open={showComingSoon} 
+        onOpenChange={setShowComingSoon} 
+      />
     </div>
   );
 }

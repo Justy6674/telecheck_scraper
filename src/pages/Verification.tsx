@@ -29,6 +29,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
+import { ComingSoonDialog } from "@/components/ui/ComingSoonDialog";
 
 interface VerificationResult {
   eligible: boolean;
@@ -92,6 +93,7 @@ export default function Verification() {
   const [asOfDate, setAsOfDate] = useState("");
   const [loading, setLoading] = useState(false);
   const [recheckingActive, setRecheckingActive] = useState(false);
+  const [showComingSoon, setShowComingSoon] = useState(false);
   const [result, setResult] = useState<VerificationResult | null>(null);
   const [nemaProfile, setNemaProfile] = useState<NEMAProfile | null>(null);
   const [loadingNema, setLoadingNema] = useState(false);
@@ -99,7 +101,7 @@ export default function Verification() {
   const handleVerification = async (e: React.FormEvent, isRecheck = false) => {
     if (e) e.preventDefault();
     if (!user) {
-      navigate("/auth");
+      setShowComingSoon(true);
       return;
     }
 
@@ -830,6 +832,11 @@ COMPLIANCE STATUS: STANDARD TELEHEALTH RULES APPLY`;
           </div>
         </div>
       )}
+      
+      <ComingSoonDialog 
+        open={showComingSoon} 
+        onOpenChange={setShowComingSoon} 
+      />
     </div>
   );
 }

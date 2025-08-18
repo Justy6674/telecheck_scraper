@@ -5,16 +5,18 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { ComingSoonDialog } from "@/components/ui/ComingSoonDialog";
 
 const AdminFooter = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [checking, setChecking] = useState(false);
+  const [showComingSoon, setShowComingSoon] = useState(false);
 
   const handleAdminAccess = async () => {
     if (!user) {
-      navigate('/auth');
+      setShowComingSoon(true);
       return;
     }
 
@@ -103,6 +105,11 @@ const AdminFooter = () => {
           </div>
         </div>
       </div>
+      
+      <ComingSoonDialog 
+        open={showComingSoon} 
+        onOpenChange={setShowComingSoon} 
+      />
     </footer>
   );
 };
