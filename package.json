@@ -13,6 +13,10 @@
     "integrity:root-cause": "node data-integrity-root-cause-analyzer.mjs",
     "integrity:now": "node integrity-scheduler.mjs --now",
     "integrity:scheduler": "node integrity-scheduler.mjs",
+    "scraper:test": "node test-audit-scraper.mjs --test",
+    "scraper:audit": "node test-audit-scraper.mjs",
+    "scraper:compare": "node scraper-comparison-engine.mjs",
+    "scraper:production": "node scrape-all-disasters-puppeteer.mjs",
     "prepare": "husky install"
   },
   "dependencies": {
@@ -53,6 +57,7 @@
     "date-fns": "^3.6.0",
     "dotenv": "^17.2.1",
     "embla-carousel-react": "^8.6.0",
+    "express": "^5.1.0",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.462.0",
     "next-themes": "^0.3.0",

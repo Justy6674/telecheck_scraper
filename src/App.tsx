@@ -25,6 +25,8 @@ import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import HealthMonitoring from "./pages/admin/HealthMonitoring";
 import ClientAnalytics from "./pages/admin/ClientAnalytics";
+import ScraperControl from "./pages/admin/ScraperControl";
+import DataValidation from "./pages/admin/DataValidation";
 
 const queryClient = new QueryClient();
 
@@ -62,6 +64,8 @@ const App = () => (
                         <Route path="/admin" element={<AdminDashboard />} />
                         <Route path="/admin/health" element={<HealthMonitoring />} />
                         <Route path="/admin/clients" element={<ClientAnalytics />} />
+                        <Route path="/admin/scraper" element={<ScraperControl />} />
+                        <Route path="/admin/validation" element={<DataValidation />} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                     </main>

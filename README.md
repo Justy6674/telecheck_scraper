@@ -11,6 +11,79 @@ A comprehensive SaaS platform providing real-time disaster declaration verificat
 
 ---
 
+## ⚠️ CRITICAL: Legal & Clinical Framework
+
+### 1. Legal Basis & Medicare Guidance
+- Medicare explicitly ties telehealth disaster exemptions to **DisasterAssist.gov.au**
+- States/territories announce activation but **DO NOT publish expiry dates**
+- Only DisasterAssist records when a disaster is "ceased"
+- This creates a grey zone requiring **professional judgement**
+
+### 2. Professional Discretion & Documentation
+**Practitioners must:**
+- Cite DisasterAssist as the official reference
+- Record AGRN, disaster title, and DisasterAssist link in patient records
+- Document why telehealth access is in the patient's best interest
+- Use professional judgement when expiry isn't clear
+
+### 3. Patient-Centred Focus
+- Purpose: Support patient access to care in exceptional circumstances
+- Prioritise benefits over bureaucratic barriers
+- Align with MBS telehealth spirit: supporting vulnerable patients in disasters
+
+### 4. Source of Truth Hierarchy
+1. **Primary:** DisasterAssist.gov.au (federal) - ONLY source for "ceased" status
+2. **Supporting:** State/territory portals - activation details only
+3. **Clinical:** Practitioner discretion with documented rationale
+
+---
+
+## 📋 Practitioner Note Templates
+
+### Short Version
+```
+Patient resides in [LGA]. DisasterAssist.gov.au lists this LGA under disaster event [Title], AGRN [####], at [URL]. In line with DoH guidance and given the patient's needs, I exercised clinical judgement that telehealth access is appropriate and in the patient's best interest.
+```
+
+### Standard Version
+```
+Telehealth conducted under the MBS disaster exemption. The patient's location is [LGA], which is currently listed on DisasterAssist.gov.au ([Title], AGRN [####], [URL]). State/territory portals announce activation but seldom state expiry; the Commonwealth register is the only public indicator of current/ceased status. Considering clinical risk/benefit, barriers to timely care, and the patient's circumstances, telehealth is justified. Evidence archived.
+```
+
+### Formal Version
+```
+This consultation proceeds under the Medicare telehealth exemption for designated disaster areas. The patient resides in [LGA]; validation was performed against DisasterAssist.gov.au ([Title], AGRN [####], captured [timestamp AEST], [URL]). Where expiry is not explicitly published by state or territory authorities, DisasterAssist serves as the authoritative public indicator of current status. Exercising professional discretion and prioritising patient safety and access, I determined the health benefit outweighs administrative barriers. All verification artefacts (HTML, screenshot, hash) retained for audit.
+```
+
+---
+
+## 🔄 Data Integrity & Crawl Schedule
+
+### Crawl Cadence (AEST/Sydney)
+- **Full crawl:** Monthly, 1st of month, 02:00 AEST
+- **Open-only crawl:** Mon/Wed/Fri, 06:00 AEST  
+- **Manual trigger:** Available in admin for emergencies
+
+### Dual-Scraper Validation
+- **Scraper A:** Playwright (primary/production)
+- **Scraper B:** Puppeteer/Selenium (audit/validation)
+- **Parity Gate:** Both must agree or status = NEEDS REVIEW
+
+### Evidence Retention
+- Full HTML snapshots
+- Screenshots (PNG/PDF)
+- SHA256 hashes
+- 7+ year retention for Medicare/PSR audits
+
+---
+
+## ⚖️ Risk Mitigation
+- **Legal:** Document DisasterAssist reference + professional rationale
+- **Audit:** Retain crawl evidence, provide templates
+- **Patient:** Ensure access isn't denied due to bureaucratic ambiguity
+
+---
+
 ## 🎯 Problem Statement
 
 Australia's $21.8B telehealth market lacks automated compliance verification for disaster-area eligibility, creating audit risk and administrative burden for 7,000+ GP practices and 2,100+ Nurse Practitioners managing 100+ active natural disaster declarations across multiple states.

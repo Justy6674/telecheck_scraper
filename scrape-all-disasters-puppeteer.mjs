@@ -414,7 +414,7 @@ async function scrapeAllDisasters() {
         // CRITICAL: Store RAW data for validation
         const rawEndDate = disaster.endDate;
         const rawStartDate = disaster.startDate;
-        const isDefinitelyActive = !rawEndDate || rawEndDate === '-' || rawEndDate === '–' || rawEndDate === '';
+        const isDefinitelyActive = !rawEndDate || rawEndDate === '-' || rawEndDate === '–' || rawEndDate === '- -' || rawEndDate === '--' || rawEndDate === '';
         
         // Process dates with validation
         const processedEndDate = isDefinitelyActive ? null : parseDate(rawEndDate);
@@ -426,16 +426,24 @@ async function scrapeAllDisasters() {
           finalStatus = 'active';
         } else if (disaster.name?.match(/onwards|commencing|continuing|from \d{4}$/i)) {
           finalStatus = 'active';
+        } else if (detailData.title?.match(/onwards|commencing|continuing|from \d{4}$/i)) {
+          finalStatus = 'active';
         } else if (processedEndDate && new Date(processedEndDate) > new Date()) {
+          finalStatus = 'active';
+        }
+        
+        // CRITICAL: Check event name for active keywords
+        const eventName = disaster.name || disaster.text || detailData.title;
+        if (!isDefinitelyActive && eventName?.match(/onwards|commencing|continuing|from \d{4}$/i)) {
           finalStatus = 'active';
         }
         
         const disasterRecord = {
           agrn_reference: agrnRef,
-          event_name: disaster.name || disaster.text || detailData.title,
+          event_name: eventName,
           disaster_type: mapDisasterType(disaster.type),
           declaration_date: processedStartDate,
-          expiry_date: processedEndDate,
+          expiry_date: finalStatus === 'active' ? null : processedEndDate,
           declaration_status: finalStatus,
           // NEW VALIDATION FIELDS
           raw_end_date: rawEndDate || '',

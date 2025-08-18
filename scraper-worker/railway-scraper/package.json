@@ -1,0 +1,19 @@
+{
+  "name": "disaster-scraper-worker",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "puppeteer": "^22.10.0",
+    "puppeteer-cluster": "^0.23.0",
+    "p-retry": "^6.2.0",
+    "uuid": "^9.0.1",
+    "@supabase/supabase-js": "^2.39.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
