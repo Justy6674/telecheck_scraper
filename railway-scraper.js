@@ -82,13 +82,19 @@ async function scrapeDisasters() {
       timeout: 60000
     });
     
-    // Wait for content
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    // Wait for table to load
+    try {
+      await page.waitForSelector('table', { timeout: 10000 });
+    } catch (e) {
+      console.log('Table not found immediately, continuing...');
+    }
+    await new Promise(resolve => setTimeout(resolve, 3000));
     
     // Extract disasters from table
     const disasters = await page.evaluate(() => {
       const results = [];
-      const rows = document.querySelectorAll('table tbody tr, table tr');
+      // Try multiple selectors to find the table rows
+      const rows = document.querySelectorAll('tbody tr, table tr, .table-responsive tr, [role="table"] tr');
       
       Array.from(rows).forEach(row => {
         const cells = row.querySelectorAll('td');
@@ -135,7 +141,7 @@ async function scrapeDisasters() {
         total_disasters_found: disasters.length,
         active_disasters_found: disasters.filter(d => d.is_active).length,
         state_counts: stateCounts,
-        scrape_type: 'automated',
+        scrape_type: 'manual',
         validation_passed: true
       });
     
