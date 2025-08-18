@@ -47,7 +47,7 @@ const Subscribe = () => {
     {
       id: 'professional' as const,
       name: 'Professional',
-      price: '$149',
+      price: '$37.80',
       period: 'per month',
       description: 'For busy practices requiring regular disaster verification and enhanced features',
       icon: Users,
