@@ -113,14 +113,31 @@ const ScraperControl = () => {
 
   const fetchRecentRuns = async () => {
     try {
+      // Using existing disaster_orchestration_logs table
       const { data, error } = await supabase
-        .from('scraper_runs')
+        .from('disaster_orchestration_logs')
         .select('*')
-        .order('started_at', { ascending: false })
+        .order('run_timestamp', { ascending: false })
         .limit(10);
 
       if (error) throw error;
-      setRecentRuns(data || []);
+      
+      // Transform data to match ScraperRun interface
+      const transformedData: ScraperRun[] = (data || []).map(log => ({
+        id: log.id,
+        run_type: 'production' as const,
+        status: log.success ? 'completed' as const : 'failed' as const,
+        started_at: log.run_timestamp,
+        completed_at: log.created_at,
+        pages_scraped: undefined,
+        disasters_found: log.declarations_found || 0,
+        active_found: log.declarations_added || 0,
+        validation_passed: log.success,
+        confidence_score: undefined,
+        error_message: log.errors?.join(', ') || null
+      }));
+      
+      setRecentRuns(transformedData);
     } catch (error) {
       console.error('Failed to fetch runs:', error);
     }
@@ -265,10 +282,11 @@ const ScraperControl = () => {
 
   const clearTestData = async () => {
     try {
+      // Clear test data from existing table
       const { error } = await supabase
-        .from('test_disaster_declarations')
+        .from('disaster_declarations')
         .delete()
-        .neq('id', 0); // Delete all
+        .eq('data_source', 'test'); // Delete test records only
 
       if (error) throw error;
 

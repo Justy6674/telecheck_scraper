@@ -173,7 +173,7 @@ const Subscribe = () => {
                   <div className="flex items-center justify-center w-12 h-12 bg-primary/10 rounded-xl mx-auto mb-4">
                     <plan.icon className="h-6 w-6 text-primary" />
                   </div>
-                  <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                  <CardTitle className="text-2xl">Single Practitioner</CardTitle>
                   <div className="space-y-2">
                     <div className="flex items-end justify-center gap-1">
                       <span className="text-3xl font-bold">{plan.price}</span>

@@ -122,13 +122,14 @@ const DataValidation = () => {
 
   const fetchValidationReports = async () => {
     try {
-      const { data, error } = await supabase
-        .from('scraper_validation_reports')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(20);
+      // Using mock data since scraper_validation_reports table doesn't exist yet
+      // const { data, error } = await supabase
+      //   .from('scraper_validation_reports')
+      //   .select('*')
+      //   .order('created_at', { ascending: false })
+      //   .limit(20);
 
-      if (error) throw error;
+      // if (error) throw error;
       
       // Mock data for demonstration
       const mockReports: ValidationReport[] = [{
@@ -160,7 +161,7 @@ const DataValidation = () => {
         }
       }];
 
-      setValidationReports(data || mockReports);
+      setValidationReports(mockReports);
       if (mockReports.length > 0) {
         setSelectedReport(mockReports[0]);
       }
