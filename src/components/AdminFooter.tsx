@@ -16,7 +16,7 @@ const AdminFooter = () => {
 
   const handleAdminAccess = async () => {
     if (!user) {
-      setShowComingSoon(true);
+      navigate('/auth');
       return;
     }
 
