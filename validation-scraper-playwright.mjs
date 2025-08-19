@@ -17,10 +17,13 @@
 import { chromium } from 'playwright';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
+import dotenv from 'dotenv';
+
+dotenv.config({ path: '.env.local' });
 
 const supabase = createClient(
-  'https://sfbohkqmykagkdmggcxw.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmYm9oa3FteWthZ2tkbWdnY3h3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTMwMjE2OSwiZXhwIjoyMDcwODc4MTY5fQ.ovWfX_c4BHmK0Nn6xb3kSGYh9xxc3gFr5igow_hHK8Y'
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://sfbohkqmykagkdmggcxw.supabase.co',
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 console.log('🎭 VALIDATION SCRAPER (PLAYWRIGHT) - Full Medicare Compliance Check\n');
@@ -382,11 +385,20 @@ async function scrapeWithPlaywright() {
           last_sync_timestamp: new Date().toISOString()
         };
 
-        // Save to test table for validation comparison
+        // Save to validation table for comparison with Puppeteer
         const { error } = await supabase
-          .from('test_disaster_declarations')
-          .upsert(record, {
-            onConflict: 'agrn_reference',
+          .from('disaster_declarations_validation')
+          .upsert({
+            agrn: `AGRN-${agrn}`,
+            name: title,
+            type: mapDisasterTypeAlternative(disaster.type),
+            state_code: stateCode,
+            start_date: startDate,
+            end_date: endDate, // NULL for active disasters
+            affected_lgas: lgas,
+            scraper_source: 'playwright'
+          }, {
+            onConflict: 'agrn',
             ignoreDuplicates: false
           });
 

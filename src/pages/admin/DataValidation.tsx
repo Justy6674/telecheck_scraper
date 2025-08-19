@@ -86,6 +86,10 @@ const DataValidation = () => {
   const [liveComparison, setLiveComparison] = useState<DisasterComparison[]>([]);
   const [compareLoading, setCompareLoading] = useState(false);
   const [showComingSoon, setShowComingSoon] = useState(false);
+  const [puppeteerLoading, setPuppeteerLoading] = useState(false);
+  const [playwrightLoading, setPlaywrightLoading] = useState(false);
+  const [aiAnalysisLoading, setAiAnalysisLoading] = useState(false);
+  const [aiAnalysis, setAiAnalysis] = useState<any>(null);
 
   useEffect(() => {
     checkAdminAccess();
@@ -124,51 +128,211 @@ const DataValidation = () => {
 
   const fetchValidationReports = async () => {
     try {
-      // Using mock data since scraper_validation_reports table doesn't exist yet
-      // const { data, error } = await supabase
-      //   .from('scraper_validation_reports')
-      //   .select('*')
-      //   .order('created_at', { ascending: false })
-      //   .limit(20);
+      // Fetch real validation data from our API
+      const response = await fetch('/api/admin/validation-status');
+      const data = await response.json();
 
-      // if (error) throw error;
+      if (!response.ok) throw new Error(data.error);
+
+      // Transform the real data into our ValidationReport format
+      const reports: ValidationReport[] = [];
       
-      // Mock data for demonstration
-      const mockReports: ValidationReport[] = [{
-        id: '1',
+      // Add current status as a report
+      const currentReport: ValidationReport = {
+        id: 'current',
         created_at: new Date().toISOString(),
         scrapers_compared: ['playwright', 'puppeteer'],
-        total_disasters_checked: 760,
-        discrepancies_found: 3,
-        confidence_score: 96.5,
-        passed: true,
+        total_disasters_checked: Math.max(data.activeDisasters.puppeteer, data.activeDisasters.playwright),
+        discrepancies_found: data.activeDisasters.match ? 0 : Math.abs(data.activeDisasters.puppeteer - data.activeDisasters.playwright),
+        confidence_score: data.validation.confidence,
+        passed: data.medicareCompliance.isCompliant,
         details: {
           null_dates: {
-            playwright: 117,
-            puppeteer: 117,
-            match: true
+            playwright: data.activeDisasters.playwright,
+            puppeteer: data.activeDisasters.puppeteer,
+            match: data.activeDisasters.match
           },
-          state_counts: [
-            { state: 'QLD', playwright: 23, puppeteer: 23, expected_range: '20-30', status: 'pass' },
-            { state: 'WA', playwright: 37, puppeteer: 37, expected_range: '30-45', status: 'pass' },
-            { state: 'NSW', playwright: 42, puppeteer: 41, expected_range: '40+', status: 'warn' },
-            { state: 'VIC', playwright: 28, puppeteer: 28, expected_range: '20+', status: 'pass' }
-          ],
+          state_counts: Object.entries(data.activeDisasters.stateBreakdown).map(([state, counts]: [string, any]) => ({
+            state,
+            playwright: counts.playwright || 0,
+            puppeteer: counts.puppeteer || 0,
+            expected_range: getExpectedRange(state),
+            status: counts.playwright === counts.puppeteer ? 'pass' : 'warn' as any
+          })),
           lga_mismatches: []
         },
         evidence: {
-          screenshots_captured: 760,
-          html_snapshots: 760,
-          sha256_hashes: ['abc123...', 'def456...', 'ghi789...']
+          screenshots_captured: data.scrapeRuns?.[0]?.total_scraped || 0,
+          html_snapshots: data.scrapeRuns?.[0]?.total_scraped || 0,
+          sha256_hashes: []
         }
-      }];
+      };
 
-      setValidationReports(mockReports);
-      if (mockReports.length > 0) {
-        setSelectedReport(mockReports[0]);
+      // Add historical validation runs if they exist
+      if (data.validation.history && data.validation.history.length > 0) {
+        data.validation.history.forEach((run: any) => {
+          reports.push({
+            id: run.run_id,
+            created_at: run.timestamp,
+            scrapers_compared: ['playwright', 'puppeteer'],
+            total_disasters_checked: Math.max(run.puppeteer_count || 0, run.playwright_count || 0),
+            discrepancies_found: run.critical_errors?.length || 0,
+            confidence_score: run.is_valid ? 100 : 50,
+            passed: run.is_valid,
+            details: {
+              null_dates: {
+                playwright: run.active_disasters_playwright || 0,
+                puppeteer: run.active_disasters_puppeteer || 0,
+                match: (run.active_disasters_playwright || 0) === (run.active_disasters_puppeteer || 0)
+              },
+              state_counts: [],
+              lga_mismatches: run.mismatches || []
+            },
+            evidence: {
+              screenshots_captured: 0,
+              html_snapshots: 0,
+              sha256_hashes: []
+            }
+          });
+        });
+      } else {
+        reports.push(currentReport);
+      }
+
+      setValidationReports(reports);
+      if (reports.length > 0) {
+        setSelectedReport(reports[0]);
+      }
+
+      // Show Medicare compliance alert if there's a risk
+      if (!data.medicareCompliance.isCompliant) {
+        toast({
+          title: "⚠️ Medicare Compliance Risk",
+          description: data.medicareCompliance.message,
+          variant: "destructive"
+        });
       }
     } catch (error) {
       console.error('Failed to fetch validation reports:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch validation data",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const getExpectedRange = (state: string): string => {
+    const ranges: Record<string, string> = {
+      'QLD': '20-30',
+      'WA': '30-45',
+      'NSW': '3-10',
+      'VIC': '1-5',
+      'SA': '1-3',
+      'NT': '1-3',
+      'TAS': '0-2',
+      'ACT': '0-1'
+    };
+    return ranges[state] || '0+';
+  };
+
+  const runPuppeteerScraper = async () => {
+    setPuppeteerLoading(true);
+    try {
+      const response = await fetch('/api/admin/run-puppeteer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        toast({
+          title: "✅ Puppeteer Scraper Complete",
+          description: data.results.message,
+          variant: "default"
+        });
+        
+        // Refresh validation reports
+        await fetchValidationReports();
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (error) {
+      toast({
+        title: "Puppeteer Scraper Failed",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive"
+      });
+    } finally {
+      setPuppeteerLoading(false);
+    }
+  };
+
+  const runPlaywrightScraper = async () => {
+    setPlaywrightLoading(true);
+    try {
+      const response = await fetch('/api/admin/run-playwright', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        toast({
+          title: "🎭 Playwright Scraper Complete",
+          description: data.results.message,
+          variant: "default"
+        });
+        
+        // Refresh validation reports
+        await fetchValidationReports();
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (error) {
+      toast({
+        title: "Playwright Scraper Failed",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive"
+      });
+    } finally {
+      setPlaywrightLoading(false);
+    }
+  };
+
+  const runAIAnalysis = async () => {
+    setAiAnalysisLoading(true);
+    try {
+      const response = await fetch('/api/admin/ai-analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setAiAnalysis(data);
+        
+        // Show Medicare risk alert
+        const risk = data.analysis.medicareRisk;
+        toast({
+          title: risk.level === 'CRITICAL' ? "🚨 CRITICAL RISK" : risk.level === 'MEDIUM' ? "⚠️ WARNING" : "✅ SAFE",
+          description: risk.message,
+          variant: risk.level === 'CRITICAL' ? "destructive" : "default"
+        });
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (error) {
+      toast({
+        title: "AI Analysis Failed",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive"
+      });
+    } finally {
+      setAiAnalysisLoading(false);
     }
   };
 
@@ -290,12 +454,142 @@ const DataValidation = () => {
         </div>
       </div>
 
+      {/* Scraper Control Buttons */}
+      <Card className="border-primary">
+        <CardHeader>
+          <CardTitle>🚀 Scraper Control Centre</CardTitle>
+          <CardDescription>Run individual scrapers and AI analysis for Medicare compliance</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-4">
+            <Button 
+              onClick={runPuppeteerScraper} 
+              disabled={puppeteerLoading}
+              className="h-20 flex flex-col gap-2"
+              variant="default"
+            >
+              {puppeteerLoading ? (
+                <RefreshCw className="h-6 w-6 animate-spin" />
+              ) : (
+                <>
+                  <Activity className="h-6 w-6" />
+                  <span>Run Puppeteer Scraper</span>
+                </>
+              )}
+            </Button>
+            
+            <Button 
+              onClick={runPlaywrightScraper} 
+              disabled={playwrightLoading}
+              className="h-20 flex flex-col gap-2"
+              variant="default"
+            >
+              {playwrightLoading ? (
+                <RefreshCw className="h-6 w-6 animate-spin" />
+              ) : (
+                <>
+                  <Camera className="h-6 w-6" />
+                  <span>Run Playwright Scraper</span>
+                </>
+              )}
+            </Button>
+            
+            <Button 
+              onClick={runAIAnalysis} 
+              disabled={aiAnalysisLoading}
+              className="h-20 flex flex-col gap-2"
+              variant="secondary"
+            >
+              {aiAnalysisLoading ? (
+                <RefreshCw className="h-6 w-6 animate-spin" />
+              ) : (
+                <>
+                  <Shield className="h-6 w-6" />
+                  <span>🤖 AI Analysis</span>
+                </>
+              )}
+            </Button>
+          </div>
+          
+          {/* AI Analysis Results */}
+          {aiAnalysis && (
+            <div className="mt-6 space-y-4">
+              <Alert className={aiAnalysis.analysis.medicareRisk.level === 'CRITICAL' ? 'border-destructive' : 
+                               aiAnalysis.analysis.medicareRisk.level === 'MEDIUM' ? 'border-warning' : 'border-success'}>
+                <AlertTriangle className="h-5 w-5" />
+                <AlertTitle>AI Analysis Complete - Medicare Risk: {aiAnalysis.analysis.medicareRisk.level}</AlertTitle>
+                <AlertDescription>
+                  <div className="mt-2 space-y-2">
+                    <p className="font-semibold">{aiAnalysis.analysis.medicareRisk.message}</p>
+                    <p>Action: {aiAnalysis.analysis.medicareRisk.action}</p>
+                    <div className="mt-3">
+                      <p className="font-semibold">Data Comparison:</p>
+                      <p>Puppeteer: {aiAnalysis.analysis.dataIntegrity.puppeteerCount} active disasters</p>
+                      <p>Playwright: {aiAnalysis.analysis.dataIntegrity.playwrightCount} active disasters</p>
+                      <p>Confidence: {aiAnalysis.analysis.dataIntegrity.confidence}%</p>
+                    </div>
+                  </div>
+                </AlertDescription>
+              </Alert>
+              
+              {/* AI Insights */}
+              {aiAnalysis.aiInsights && aiAnalysis.aiInsights.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">🤖 AI Insights</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2">
+                      {aiAnalysis.aiInsights.map((insight: string, idx: number) => (
+                        <li key={idx} className="text-sm">{insight}</li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
+              
+              {/* Recommendations */}
+              {aiAnalysis.analysis.recommendations && aiAnalysis.analysis.recommendations.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">📋 Recommendations</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-1">
+                      {aiAnalysis.analysis.recommendations.map((rec: string, idx: number) => (
+                        <li key={idx} className="text-sm">{rec}</li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Medicare Compliance Alert */}
+      {selectedReport && !selectedReport.passed && (
+        <Alert className="border-destructive bg-destructive/10">
+          <AlertTriangle className="h-5 w-5" />
+          <AlertTitle className="text-lg">🚨 MEDICARE COMPLIANCE RISK - $500,000 FINE</AlertTitle>
+          <AlertDescription className="mt-2">
+            <div className="space-y-2">
+              <p className="font-semibold">Dual-scraper validation has FAILED. Data mismatch detected!</p>
+              <p>Puppeteer found {selectedReport.details.null_dates.puppeteer} active disasters</p>
+              <p>Playwright found {selectedReport.details.null_dates.playwright} active disasters</p>
+              <p className="text-destructive font-bold">DO NOT BILL MEDICARE until scrapers match!</p>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Current Validation Status */}
       {selectedReport && (
         <Card className={selectedReport.passed ? "border-success" : "border-destructive"}>
           <CardHeader>
             <div className="flex items-centre justify-between">
-              <CardTitle>Latest Validation Report</CardTitle>
+              <CardTitle>Latest Validation Report - Dual Scraper System</CardTitle>
               <div className="flex items-centre gap-2">
                 <Badge variant={selectedReport.passed ? "default" : "destructive"} className="text-lg px-3 py-1">
                   {selectedReport.confidence_score}% Confidence
@@ -322,12 +616,29 @@ const DataValidation = () => {
                 <div className="text-sm text-muted-foreground">Discrepancies</div>
               </div>
               <div className="text-centre">
-                <div className="text-2xl font-bold">{selectedReport.details.null_dates.playwright}</div>
+                <div className="text-2xl font-bold text-primary">{selectedReport.details.null_dates.puppeteer}</div>
                 <div className="text-sm text-muted-foreground">Active (No End Date)</div>
               </div>
               <div className="text-centre">
                 <div className="text-2xl font-bold">{selectedReport.evidence.screenshots_captured}</div>
                 <div className="text-sm text-muted-foreground">Evidence Captured</div>
+              </div>
+            </div>
+            
+            {/* Medicare Billing Status */}
+            <div className="mt-4 p-4 bg-muted rounded-lg">
+              <div className="flex items-centre justify-between">
+                <div>
+                  <p className="font-semibold">Medicare Telehealth Billing Status</p>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedReport.passed 
+                      ? `✅ ${selectedReport.details.null_dates.puppeteer} disasters eligible for telehealth billing`
+                      : '❌ DO NOT BILL - Validation failed'}
+                  </p>
+                </div>
+                <Badge variant={selectedReport.passed ? "default" : "destructive"} className="text-lg">
+                  {selectedReport.passed ? 'SAFE TO BILL' : 'DO NOT BILL'}
+                </Badge>
               </div>
             </div>
           </CardContent>
