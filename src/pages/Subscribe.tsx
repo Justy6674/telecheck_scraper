@@ -212,11 +212,6 @@ const Subscribe = () => {
                     <ArrowRight className="h-4 w-4 ml-2" />
                   </Button>
 
-                  {plan.name !== 'Single Practitioner' && (
-                    <p className="text-xs text-center text-muted-foreground">
-                      No credit card required for trial
-                    </p>
-                  )}
                 </CardContent>
               </Card>
             ))}
