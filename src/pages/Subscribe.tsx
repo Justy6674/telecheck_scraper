@@ -208,7 +208,7 @@ const Subscribe = () => {
                     variant={plan.popular ? 'default' : 'outline'}
                     onClick={() => setShowComingSoon(true)}
                   >
-                    {plan.name === 'Single Practitioner' ? 'Get Started' : 'Start 14-Day Trial'}
+                    Get Started
                     <ArrowRight className="h-4 w-4 ml-2" />
                   </Button>
 
