@@ -149,7 +149,7 @@ const Index = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="flex items-center justify-center w-10 h-10 bg-background rounded-xl shadow-medical">
-                <img src="/lovable-uploads/e4f6509d-5651-4771-b0a0-9c6149c30a93.png" alt="TeleCheck Logo" className="h-8 w-8 object-contain" />
+                <img src="/lovable-uploads/abc23214-492e-40a7-b0d3-c02a00a72b7d.png" alt="TeleCheck Logo" className="h-8 w-8 object-contain" />
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-primary">TeleCheck</h1>
