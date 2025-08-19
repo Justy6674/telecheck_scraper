@@ -1,0 +1,32 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "./Dockerfile"
+
+[deploy]
+numReplicas = 1
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+[services.nsw-scraper]
+start = "node railway-nsw-scraper.js"
+
+[services.vic-scraper]
+start = "node railway-vic-scraper.js"
+
+[services.qld-scraper]
+start = "node railway-qld-scraper.js"
+
+[services.wa-scraper]
+start = "node railway-wa-scraper.js"
+
+[services.sa-scraper]
+start = "node railway-sa-scraper.js"
+
+[services.tas-scraper]
+start = "node railway-tas-scraper.js"
+
+[services.nt-scraper]
+start = "node railway-nt-scraper.js"
+
+[services.act-scraper]
+start = "node railway-act-scraper.js"

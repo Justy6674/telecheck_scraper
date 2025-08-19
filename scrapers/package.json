@@ -1,0 +1,22 @@
+{
+  "name": "disaster-scrapers",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "nsw": "node railway-nsw-scraper.js",
+    "vic": "node railway-vic-scraper.js",
+    "qld": "node railway-qld-scraper.js",
+    "wa": "node railway-wa-scraper.js",
+    "sa": "node railway-sa-scraper.js",
+    "tas": "node railway-tas-scraper.js",
+    "nt": "node railway-nt-scraper.js",
+    "act": "node railway-act-scraper.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "puppeteer": "^21.6.1",
+    "@supabase/supabase-js": "^2.39.7",
+    "node-cron": "^3.0.3",
+    "dotenv": "^16.4.5"
+  }
+}
