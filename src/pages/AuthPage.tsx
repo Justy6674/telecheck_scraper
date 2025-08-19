@@ -45,7 +45,7 @@ export default function AuthPage() {
         <div className="text-center space-y-4">
           <div className="flex justify-center">
             <div className="flex items-center justify-center w-16 h-16 bg-primary rounded-2xl shadow-medical">
-              <Stethoscope className="h-8 w-8 text-primary-foreground" />
+              <img src="/lovable-uploads/abc23214-492e-40a7-b0d3-c02a00a72b7d.png" alt="TeleCheck logo" className="h-8 w-8 object-contain" />
             </div>
           </div>
           <div>

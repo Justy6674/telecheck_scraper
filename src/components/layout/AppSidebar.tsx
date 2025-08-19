@@ -84,7 +84,7 @@ export function AppSidebar() {
       <SidebarHeader className="border-b border-sidebar-border p-4">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center w-8 h-8 bg-primary rounded-lg">
-            <Stethoscope className="h-5 w-5 text-primary-foreground" />
+            <img src="/lovable-uploads/abc23214-492e-40a7-b0d3-c02a00a72b7d.png" alt="TeleCheck logo" className="h-5 w-5 object-contain" />
           </div>
           {!collapsed && (
             <div>
