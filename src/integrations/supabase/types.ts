@@ -407,6 +407,45 @@ export type Database = {
           },
         ]
       }
+      critical_alerts: {
+        Row: {
+          acknowledged: boolean | null
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          alert_type: string
+          created_at: string | null
+          details: Json | null
+          id: number
+          message: string
+          severity: string
+          timestamp: string
+        }
+        Insert: {
+          acknowledged?: boolean | null
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type: string
+          created_at?: string | null
+          details?: Json | null
+          id?: number
+          message: string
+          severity: string
+          timestamp: string
+        }
+        Update: {
+          acknowledged?: boolean | null
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: number
+          message?: string
+          severity?: string
+          timestamp?: string
+        }
+        Relationships: []
+      }
       daily_usage_stats: {
         Row: {
           api_calls_count: number | null
@@ -855,6 +894,48 @@ export type Database = {
             referencedColumns: ["lga_code"]
           },
         ]
+      }
+      disaster_declarations_validation: {
+        Row: {
+          affected_lgas: string[] | null
+          agrn: string
+          created_at: string | null
+          end_date: string | null
+          id: number
+          name: string
+          scraper_source: string | null
+          start_date: string | null
+          state_code: string | null
+          type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          affected_lgas?: string[] | null
+          agrn: string
+          created_at?: string | null
+          end_date?: string | null
+          id?: number
+          name: string
+          scraper_source?: string | null
+          start_date?: string | null
+          state_code?: string | null
+          type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          affected_lgas?: string[] | null
+          agrn?: string
+          created_at?: string | null
+          end_date?: string | null
+          id?: number
+          name?: string
+          scraper_source?: string | null
+          start_date?: string | null
+          state_code?: string | null
+          type?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       disaster_history: {
         Row: {
@@ -2877,6 +2958,54 @@ export type Database = {
           rule_type?: string | null
           severity?: string | null
           state_code?: string | null
+        }
+        Relationships: []
+      }
+      validation_runs: {
+        Row: {
+          active_disasters_playwright: number | null
+          active_disasters_puppeteer: number | null
+          created_at: string | null
+          critical_errors: Json | null
+          id: number
+          is_valid: boolean
+          mismatches: Json | null
+          playwright_count: number | null
+          playwright_time_ms: number | null
+          puppeteer_count: number | null
+          puppeteer_time_ms: number | null
+          run_id: string
+          timestamp: string
+        }
+        Insert: {
+          active_disasters_playwright?: number | null
+          active_disasters_puppeteer?: number | null
+          created_at?: string | null
+          critical_errors?: Json | null
+          id?: number
+          is_valid: boolean
+          mismatches?: Json | null
+          playwright_count?: number | null
+          playwright_time_ms?: number | null
+          puppeteer_count?: number | null
+          puppeteer_time_ms?: number | null
+          run_id: string
+          timestamp: string
+        }
+        Update: {
+          active_disasters_playwright?: number | null
+          active_disasters_puppeteer?: number | null
+          created_at?: string | null
+          critical_errors?: Json | null
+          id?: number
+          is_valid?: boolean
+          mismatches?: Json | null
+          playwright_count?: number | null
+          playwright_time_ms?: number | null
+          puppeteer_count?: number | null
+          puppeteer_time_ms?: number | null
+          run_id?: string
+          timestamp?: string
         }
         Relationships: []
       }
