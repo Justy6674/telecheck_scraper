@@ -900,6 +900,48 @@ export type Database = {
           },
         ]
       }
+      disaster_index: {
+        Row: {
+          agrn: string
+          disaster_name: string
+          disaster_type: string | null
+          end_date_raw: string | null
+          is_active: boolean | null
+          scan_id: string | null
+          scanned_at: string | null
+          start_date_raw: string | null
+          state: string | null
+          telehealth_eligible: boolean | null
+          url: string | null
+        }
+        Insert: {
+          agrn: string
+          disaster_name: string
+          disaster_type?: string | null
+          end_date_raw?: string | null
+          is_active?: boolean | null
+          scan_id?: string | null
+          scanned_at?: string | null
+          start_date_raw?: string | null
+          state?: string | null
+          telehealth_eligible?: boolean | null
+          url?: string | null
+        }
+        Update: {
+          agrn?: string
+          disaster_name?: string
+          disaster_type?: string | null
+          end_date_raw?: string | null
+          is_active?: boolean | null
+          scan_id?: string | null
+          scanned_at?: string | null
+          start_date_raw?: string | null
+          state?: string | null
+          telehealth_eligible?: boolean | null
+          url?: string | null
+        }
+        Relationships: []
+      }
       disaster_lgas: {
         Row: {
           added_date: string
@@ -1259,6 +1301,36 @@ export type Database = {
           },
         ]
       }
+      frontend_estimates: {
+        Row: {
+          active_disasters: number | null
+          created_at: string | null
+          id: string
+          last_updated: string | null
+          scan_id: string | null
+          state_counts: Json | null
+          total_disasters: number | null
+        }
+        Insert: {
+          active_disasters?: number | null
+          created_at?: string | null
+          id?: string
+          last_updated?: string | null
+          scan_id?: string | null
+          state_counts?: Json | null
+          total_disasters?: number | null
+        }
+        Update: {
+          active_disasters?: number | null
+          created_at?: string | null
+          id?: string
+          last_updated?: string | null
+          scan_id?: string | null
+          state_counts?: Json | null
+          total_disasters?: number | null
+        }
+        Relationships: []
+      }
       health_metrics: {
         Row: {
           id: string
@@ -1292,6 +1364,48 @@ export type Database = {
           recorded_at?: string | null
           threshold_max?: number | null
           threshold_min?: number | null
+        }
+        Relationships: []
+      }
+      index_scans: {
+        Row: {
+          active_disasters: number | null
+          changes_detected: boolean | null
+          completed_at: string | null
+          created_at: string | null
+          duration_seconds: number | null
+          expired_disasters: number | null
+          id: string
+          scan_type: string | null
+          started_at: string | null
+          state_breakdown: Json | null
+          total_disasters: number | null
+        }
+        Insert: {
+          active_disasters?: number | null
+          changes_detected?: boolean | null
+          completed_at?: string | null
+          created_at?: string | null
+          duration_seconds?: number | null
+          expired_disasters?: number | null
+          id?: string
+          scan_type?: string | null
+          started_at?: string | null
+          state_breakdown?: Json | null
+          total_disasters?: number | null
+        }
+        Update: {
+          active_disasters?: number | null
+          changes_detected?: boolean | null
+          completed_at?: string | null
+          created_at?: string | null
+          duration_seconds?: number | null
+          expired_disasters?: number | null
+          id?: string
+          scan_type?: string | null
+          started_at?: string | null
+          state_breakdown?: Json | null
+          total_disasters?: number | null
         }
         Relationships: []
       }
@@ -1576,6 +1690,104 @@ export type Database = {
           nema_url?: string
           storage_path?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      organization_users: {
+        Row: {
+          concurrent_sessions: number | null
+          created_at: string | null
+          device_fingerprints: Json | null
+          email: string
+          id: string
+          last_login_ip: unknown | null
+          organization_id: string | null
+          role: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          concurrent_sessions?: number | null
+          created_at?: string | null
+          device_fingerprints?: Json | null
+          email: string
+          id?: string
+          last_login_ip?: unknown | null
+          organization_id?: string | null
+          role?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          concurrent_sessions?: number | null
+          created_at?: string | null
+          device_fingerprints?: Json | null
+          email?: string
+          id?: string
+          last_login_ip?: unknown | null
+          organization_id?: string | null
+          role?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_users_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          allowed_domains: string[] | null
+          api_key: string | null
+          billing_period_end: string | null
+          billing_period_start: string | null
+          created_at: string | null
+          id: string
+          name: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          subscription_status: string | null
+          subscription_tier: string | null
+          updated_at: string | null
+          verifications_limit: number | null
+          verifications_used: number | null
+        }
+        Insert: {
+          allowed_domains?: string[] | null
+          api_key?: string | null
+          billing_period_end?: string | null
+          billing_period_start?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_status?: string | null
+          subscription_tier?: string | null
+          updated_at?: string | null
+          verifications_limit?: number | null
+          verifications_used?: number | null
+        }
+        Update: {
+          allowed_domains?: string[] | null
+          api_key?: string | null
+          billing_period_end?: string | null
+          billing_period_start?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_status?: string | null
+          subscription_tier?: string | null
+          updated_at?: string | null
+          verifications_limit?: number | null
+          verifications_used?: number | null
         }
         Relationships: []
       }
@@ -2062,6 +2274,45 @@ export type Database = {
         }
         Relationships: []
       }
+      scraper_comparison_reports: {
+        Row: {
+          confidence_score: number | null
+          created_at: string | null
+          disasters_compared: number | null
+          discrepancies: Json | null
+          id: string
+          passed: boolean | null
+          playwright_count: number | null
+          puppeteer_count: number | null
+          recommendation: string | null
+          report_path: string | null
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string | null
+          disasters_compared?: number | null
+          discrepancies?: Json | null
+          id?: string
+          passed?: boolean | null
+          playwright_count?: number | null
+          puppeteer_count?: number | null
+          recommendation?: string | null
+          report_path?: string | null
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string | null
+          disasters_compared?: number | null
+          discrepancies?: Json | null
+          id?: string
+          passed?: boolean | null
+          playwright_count?: number | null
+          puppeteer_count?: number | null
+          recommendation?: string | null
+          report_path?: string | null
+        }
+        Relationships: []
+      }
       scraper_errors: {
         Row: {
           agrn_reference: string | null
@@ -2359,6 +2610,102 @@ export type Database = {
           id?: string
           patient_postcode?: string | null
           practitioner_id?: string | null
+        }
+        Relationships: []
+      }
+      test_disaster_declarations: {
+        Row: {
+          affected_areas: Json | null
+          agrn_reference: string
+          created_at: string | null
+          data_source: string | null
+          declaration_authority: string | null
+          declaration_date: string | null
+          declaration_status: string | null
+          description: string | null
+          disaster_type: string | null
+          event_name: string
+          expiry_date: string | null
+          is_active_verified: boolean | null
+          last_sync_timestamp: string | null
+          lga_code: string | null
+          raw_end_date: string | null
+          raw_start_date: string | null
+          scan_id: string | null
+          scrape_run_id: string | null
+          scraped_at: string | null
+          scraper_version: string | null
+          severity_level: number | null
+          source_system: string | null
+          source_url: string | null
+          state_code: string | null
+          telehealth_eligible: boolean | null
+          updated_at: string | null
+          validation_run_id: string | null
+          validation_status: string | null
+          verification_url: string | null
+        }
+        Insert: {
+          affected_areas?: Json | null
+          agrn_reference: string
+          created_at?: string | null
+          data_source?: string | null
+          declaration_authority?: string | null
+          declaration_date?: string | null
+          declaration_status?: string | null
+          description?: string | null
+          disaster_type?: string | null
+          event_name: string
+          expiry_date?: string | null
+          is_active_verified?: boolean | null
+          last_sync_timestamp?: string | null
+          lga_code?: string | null
+          raw_end_date?: string | null
+          raw_start_date?: string | null
+          scan_id?: string | null
+          scrape_run_id?: string | null
+          scraped_at?: string | null
+          scraper_version?: string | null
+          severity_level?: number | null
+          source_system?: string | null
+          source_url?: string | null
+          state_code?: string | null
+          telehealth_eligible?: boolean | null
+          updated_at?: string | null
+          validation_run_id?: string | null
+          validation_status?: string | null
+          verification_url?: string | null
+        }
+        Update: {
+          affected_areas?: Json | null
+          agrn_reference?: string
+          created_at?: string | null
+          data_source?: string | null
+          declaration_authority?: string | null
+          declaration_date?: string | null
+          declaration_status?: string | null
+          description?: string | null
+          disaster_type?: string | null
+          event_name?: string
+          expiry_date?: string | null
+          is_active_verified?: boolean | null
+          last_sync_timestamp?: string | null
+          lga_code?: string | null
+          raw_end_date?: string | null
+          raw_start_date?: string | null
+          scan_id?: string | null
+          scrape_run_id?: string | null
+          scraped_at?: string | null
+          scraper_version?: string | null
+          severity_level?: number | null
+          source_system?: string | null
+          source_url?: string | null
+          state_code?: string | null
+          telehealth_eligible?: boolean | null
+          updated_at?: string | null
+          validation_run_id?: string | null
+          validation_status?: string | null
+          verification_url?: string | null
         }
         Relationships: []
       }
